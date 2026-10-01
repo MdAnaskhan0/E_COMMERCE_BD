@@ -1,0 +1,39 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/noto-sans-bengali/400.css';
+@import '@fontsource/noto-sans-bengali/600.css';
+@import '@fontsource/noto-sans-bengali/700.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body { @apply bg-slate-50 text-slate-800 antialiased; line-height: 1.6; }
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-50; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-ghost { @apply btn border border-slate-300 bg-white hover:bg-slate-100; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100; }
+  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+  .label { @apply mb-1 block text-xs font-semibold text-slate-600; }
+}
+
+/* ---------- professional design system ---------- */
+body { background: radial-gradient(1200px 500px at 85% -10%, #e0e7ff55, transparent), #f8fafc; }
+.card { @apply rounded-2xl border-slate-200/70 shadow-[0_1px_2px_rgba(15,23,42,.04),0_8px_24px_-12px_rgba(15,23,42,.12)]; }
+.btn { @apply rounded-xl active:scale-[.98]; }
+.btn-primary { @apply bg-gradient-to-r from-brand-600 to-violet-600 shadow-md shadow-brand-600/25 hover:shadow-lg hover:shadow-brand-600/30 hover:brightness-110; }
+.input { @apply rounded-xl border-slate-200 bg-slate-50/60 px-3.5 py-2.5 transition hover:border-slate-300 focus:bg-white; }
+.label { @apply text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+.section-title { @apply relative mb-6 flex items-end justify-between text-2xl font-bold tracking-tight; }
+.section-title span::after { content: ''; @apply mt-1 block h-1 w-12 rounded-full bg-gradient-to-r from-brand-600 to-violet-500; }
+.badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+table.tbl { @apply w-full text-sm; }
+table.tbl thead { @apply bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500; }
+table.tbl th { @apply px-4 py-3 text-left font-semibold; }
+table.tbl td { @apply px-4 py-3; }
+table.tbl tbody tr { @apply border-t border-slate-100 transition hover:bg-brand-50/40; }
+.skeleton { @apply animate-pulse rounded-xl bg-slate-200/70; }
+::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+@keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-14px) } }
+.float { animation: float 6s ease-in-out infinite; }

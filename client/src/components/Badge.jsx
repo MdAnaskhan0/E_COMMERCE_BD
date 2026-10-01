@@ -1,0 +1,3 @@
+const C = { pending: 'bg-amber-100 text-amber-700', confirmed: 'bg-sky-100 text-sky-700', processing: 'bg-indigo-100 text-indigo-700', shipped: 'bg-violet-100 text-violet-700', delivered: 'bg-emerald-100 text-emerald-700', cancelled: 'bg-red-100 text-red-700',
+  paid: 'bg-emerald-100 text-emerald-700', unpaid: 'bg-amber-100 text-amber-700', refunded: 'bg-slate-200 text-slate-700', on: 'bg-emerald-100 text-emerald-700', off: 'bg-slate-200 text-slate-600' };
+export default function Badge({ s, children }) { return <span className={`badge ${C[s] || 'bg-slate-100 text-slate-700'}`}>{children ?? s}</span>; }
