@@ -17,6 +17,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const Products = lazy(() => import('./pages/admin/Products'));
 const ProductForm = lazy(() => import('./pages/admin/ProductForm'));
 const Orders = lazy(() => import('./pages/admin/Orders'));
+const OrderDetail = lazy(() => import('./pages/admin/OrderDetail'));
 const Reviews = lazy(() => import('./pages/admin/Reviews'));
 const ShopInfo = lazy(() => import('./pages/admin/ShopInfo'));
 const { Categories, SubCategories, Coupons, Users } = { Categories: lazy(() => import('./pages/admin/Simple').then((m) => ({ default: m.Categories }))),
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/:id" element={<ProductForm />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/:id" element={<OrderDetail />} />
           <Route path="coupons" element={<Coupons />} />
           <Route path="reviews" element={<Reviews />} />
           <Route path="shop-info" element={<ShopInfo />} />

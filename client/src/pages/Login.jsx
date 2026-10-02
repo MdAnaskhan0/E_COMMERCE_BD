@@ -22,8 +22,8 @@ export default function Login({ register }) {
     <div className="mx-auto grid max-w-5xl overflow-hidden px-4 py-10 md:grid-cols-2">
       <div className="relative hidden flex-col justify-between overflow-hidden rounded-l-3xl bg-gradient-to-br from-brand-700 via-violet-700 to-fuchsia-600 p-10 text-white md:flex">
         <div className="float absolute -right-10 -top-10 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl"><FiShoppingBag /></span>
-        <div><h2 className="text-3xl font-extrabold leading-tight">{shop?.shop_name}</h2><p className="mt-3 text-white/80">{t('heroSub')}</p></div>
+        {shop?.logo ? <div className="inline-block self-start rounded-2xl bg-white p-3"><img src={shop.logo} alt="" className="h-20 max-w-[220px] object-contain" /></div> : <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl"><FiShoppingBag /></span>}
+        <div>{!shop?.logo && <h2 className="text-3xl font-extrabold leading-tight">{shop?.shop_name}</h2>}<p className="mt-3 text-white/80">{t('heroSub')}</p></div>
         <p className="text-sm text-white/70">{t('trustLine')}</p>
       </div>
       <motion.form initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} onSubmit={submit} className="card space-y-4 rounded-3xl p-8 md:rounded-l-none">

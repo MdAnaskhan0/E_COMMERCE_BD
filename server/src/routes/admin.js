@@ -88,18 +88,28 @@ r.put('/products/:id', upload.array('images', 8), saveProduct(false));
 r.delete('/products/:id', ah(async (req, res) => { await q('DELETE FROM products WHERE id=?', [req.params.id]); res.json({ ok: true }); }));
 
 // ---------- orders ----------
+const FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 r.get('/orders', ah(async (req, res) => {
-  const rows = await q(`SELECT * FROM orders ${req.query.status ? 'WHERE status=?' : ''} ORDER BY id DESC LIMIT 300`, req.query.status ? [req.query.status] : []);
-  for (const o of rows) o.items = await q('SELECT product_name,quantity,line_total FROM order_items WHERE order_id=?', [o.id]);
+  const rows = await q(`SELECT id,order_no,customer_name,customer_phone,total,status,payment_method,payment_status,created_at,(SELECT COUNT(*) FROM order_items WHERE order_id=orders.id) items FROM orders ${req.query.status ? 'WHERE status=?' : ''} ORDER BY id DESC LIMIT 500`, req.query.status ? [req.query.status] : []);
   res.json(rows);
+}));
+r.get('/orders/:id', ah(async (req, res) => {
+  const [o] = await q('SELECT * FROM orders WHERE id=?', [req.params.id]); if (!o) throw new HttpError(404, 'Order not found');
+  res.json({ ...o, items: await q('SELECT product_name,unit_price,quantity,line_total FROM order_items WHERE order_id=?', [o.id]), history: await q('SELECT status,created_at FROM order_status_history WHERE order_id=? ORDER BY id', [o.id]) });
 }));
 r.put('/orders/:id', validate(z.object({ status: z.enum(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled']), payment_status: z.enum(['unpaid', 'paid', 'refunded']) })),
   ah(async (req, res) => {
     const [o] = await q('SELECT status FROM orders WHERE id=?', [req.params.id]); if (!o) throw new HttpError(404, 'Not found');
-    await q('UPDATE orders SET status=?, payment_status=? WHERE id=?', [req.body.status, req.body.payment_status, req.params.id]);
-    if (o.status !== req.body.status) {
-      await q('INSERT INTO order_status_history (order_id,status) VALUES (?,?)', [req.params.id, req.body.status]);
-      if (req.body.status === 'cancelled') await q('UPDATE products p JOIN order_items i ON i.product_id=p.id SET p.stock=p.stock+i.quantity, p.sold_count=GREATEST(0,p.sold_count-i.quantity) WHERE i.order_id=?', [req.params.id]);
+    const cur = o.status, next = req.body.status;
+    if (next !== cur) { // status can only move FORWARD
+      if (cur === 'delivered' || cur === 'cancelled') throw new HttpError(400, `Order is already ${cur} and cannot be changed`);
+      if (next === 'cancelled') { if (cur === 'shipped') throw new HttpError(400, 'A shipped order cannot be cancelled'); }
+      else if (FLOW.indexOf(next) < FLOW.indexOf(cur)) throw new HttpError(400, 'Order status cannot go backward');
+    }
+    await q('UPDATE orders SET status=?, payment_status=? WHERE id=?', [next, req.body.payment_status, req.params.id]);
+    if (next !== cur) {
+      await q('INSERT INTO order_status_history (order_id,status) VALUES (?,?)', [req.params.id, next]);
+      if (next === 'cancelled') await q('UPDATE products p JOIN order_items i ON i.product_id=p.id SET p.stock=p.stock+i.quantity, p.sold_count=GREATEST(0,p.sold_count-i.quantity) WHERE i.order_id=?', [req.params.id]);
     }
     res.json({ ok: true });
   }));
@@ -112,7 +122,7 @@ r.delete('/reviews/:id', ah(async (req, res) => { await q('DELETE FROM reviews W
 // ---------- shop info (logo upload) ----------
 r.put('/shop-info', upload.single('logo'), ah(async (req, res) => {
   const d = z.object({ shop_name: z.string().trim().min(1).max(120), address: z.string().max(255), phone: z.string().max(30), email: z.string().max(190),
-    facebook: z.string().max(255), instagram: z.string().max(255), youtube: z.string().max(255), whatsapp: z.string().max(255), notice: z.string().max(500), shipping_fee: z.coerce.number().min(0) }).parse(JSON.parse(req.body.data));
+    facebook: z.string().max(255), instagram: z.string().max(255), youtube: z.string().max(255), whatsapp: z.string().max(255), bkash_number: z.string().max(20).default(''), nagad_number: z.string().max(20).default(''), notice: z.string().max(500), shipping_fee: z.coerce.number().min(0) }).parse(JSON.parse(req.body.data));
   const k = Object.keys(d); const v = Object.values(d);
   if (req.file) { k.push('logo'); v.push(`/uploads/${req.file.filename}`); }
   await q(`UPDATE shop_info SET ${k.map((c) => `${c}=?`).join(',')} WHERE id=1`, v); res.json({ ok: true });

@@ -7,6 +7,8 @@ import { requireAuth } from '../middleware/auth.js';
 const r = Router();
 const LIST = `SELECT p.id,p.name_en,p.name_bn,p.price,p.sale_price,p.stock,p.unit,p.is_featured,p.sold_count,p.category_id,p.sub_category_id,
   (SELECT url FROM product_images WHERE product_id=p.id ORDER BY sort_order,id LIMIT 1) AS image,
+  (SELECT url FROM product_images WHERE product_id=p.id ORDER BY sort_order,id LIMIT 1 OFFSET 1) AS image2,
+  (SELECT name_en FROM categories WHERE id=p.category_id) AS cat_en, (SELECT name_bn FROM categories WHERE id=p.category_id) AS cat_bn,
   (SELECT ROUND(AVG(rating),1) FROM reviews WHERE product_id=p.id AND is_approved=1) AS rating,
   (SELECT COUNT(*) FROM reviews WHERE product_id=p.id AND is_approved=1) AS review_count
   FROM products p WHERE p.is_active=1`;
@@ -26,6 +28,9 @@ r.get('/products', ah(async (req, res) => {
   if (search) { sql += ' AND (p.name_en LIKE ? OR p.name_bn LIKE ?)'; p.push(`%${search}%`, `%${search}%`); }
   if (category) { sql += ' AND p.category_id=?'; p.push(+category); }
   if (sub) { sql += ' AND p.sub_category_id=?'; p.push(+sub); }
+  if (+req.query.min >= 0 && req.query.min) { sql += ' AND COALESCE(p.sale_price,p.price)>=?'; p.push(+req.query.min); }
+  if (+req.query.max > 0) { sql += ' AND COALESCE(p.sale_price,p.price)<=?'; p.push(+req.query.max); }
+  if (req.query.instock) sql += ' AND p.stock>0';
   if (featured) sql += ' AND p.is_featured=1';
   if (best) sql += ' AND p.sold_count>0';
   const order = { price_asc: 'COALESCE(p.sale_price,p.price) ASC', price_desc: 'COALESCE(p.sale_price,p.price) DESC' }[sort] || (best ? 'p.sold_count DESC' : 'p.id DESC');

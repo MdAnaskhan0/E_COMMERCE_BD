@@ -11,8 +11,8 @@ export default function AdminLayout() {
   const title = nav.find(([to, , , end]) => (end ? loc.pathname === to : loc.pathname.startsWith(to)))?.[2] || 'Admin';
   const Side = (
     <div className="flex h-full flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 p-4 text-slate-300">
-      <div className="mb-8 flex items-center gap-2.5 px-2"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-500 text-white"><FiShoppingBag /></span>
-        <div><p className="font-extrabold leading-tight text-white">{shop?.shop_name || 'Shop'}</p><p className="text-[11px] uppercase tracking-widest text-slate-500">Admin</p></div></div>
+      <div className="mb-8 px-2">{shop?.logo ? <div className="rounded-2xl bg-white p-2"><img src={shop.logo} alt={shop.shop_name} className="mx-auto h-16 max-w-full object-contain" /></div>
+        : <div className="flex items-center gap-2.5"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-500 text-white"><FiShoppingBag /></span><div><p className="font-extrabold leading-tight text-white">{shop?.shop_name || 'Shop'}</p><p className="text-[11px] uppercase tracking-widest text-slate-500">Admin</p></div></div>}</div>
       <nav className="flex-1 space-y-1">{nav.map(([to, I, l, end]) => <NavLink key={to} to={to} end={end} onClick={() => setOpen(false)}
         className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${isActive ? 'bg-gradient-to-r from-brand-600 to-violet-600 text-white shadow-lg shadow-brand-600/30' : 'hover:bg-white/5 hover:text-white'}`}><I size={18} />{l}</NavLink>)}</nav>
       <Link to="/" className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 px-3.5 py-2.5 text-sm hover:bg-white/5"><FiExternalLink />View website</Link>

@@ -94,11 +94,11 @@ npm run dev       # http://localhost:5173
 
 
 ## Problem have to solved
-  - logo image size need more bigger, If have image the text should not be shown
-  - Product Page Side bar need to be change
-  - Navbar and Search bar need to be solved
-  - Order Track no need number just only order number
-  - Order status can't update backword
+  - logo image size need more bigger, If have image the Site Name should not be shown
+  - Product Page Side bar need to be UI change 
+  - Navbar and Search bar need to be UI change 
+  - Order Track no need Phobe number just track with only order number
+  - Order status can't update backword.
   - Product Card, Single Product Page UI need to be change.
   - Checkout Page: Payment option not Dropdown use radio, If select Bkash/Nagad get a popup screen show amount to pay and Bkash/Nagad Number and get Transaction ID by input. Admin will check Transaction ID and update Payment Status.
   - Admin Panel Order Manage Page UI need to be update like click on the order and the order manage page will come then he will update order/payment status.

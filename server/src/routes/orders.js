@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { pool, q } from '../config/db.js';
 import { ah, validate, HttpError, orderNo } from '../utils/helpers.js';
@@ -12,7 +13,7 @@ const schema = z.object({
   items: z.array(z.object({ product_id: z.number().int().positive(), qty: z.number().int().min(1).max(999) })).min(1).max(50),
   name: z.string().trim().min(2).max(120), phone, email: z.string().email().optional().or(z.literal('')),
   address_line: z.string().trim().min(5).max(255), city: z.string().trim().min(2).max(80), note: z.string().trim().max(500).optional(),
-  payment_method: z.enum(['cod', 'bkash', 'nagad']), payment_trx_id: z.string().trim().max(60).optional(), coupon: z.string().max(40).optional(),
+  payment_method: z.enum(['cod', 'bkash', 'nagad']), payment_trx_id: z.string().trim().regex(/^[A-Za-z0-9]{6,20}$/, 'Invalid Transaction ID').optional(), coupon: z.string().max(40).optional(),
 });
 // Price is ALWAYS recomputed on the server (never trust the browser)
 const unitPrice = (p, tiers, qty) => {
@@ -61,9 +62,10 @@ r.get('/my', requireAuth, ah(async (req, res) => {
   const rows = await q('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC', [req.user.id]);
   res.json(await Promise.all(rows.map(detail)));
 }));
-// guest tracking needs BOTH order number and phone
-r.post('/track', validate(z.object({ order_no: z.string().trim().max(30), phone: z.string().trim().max(20) })), ah(async (req, res) => {
-  const [o] = await q('SELECT * FROM orders WHERE order_no=? AND customer_phone=?', [req.body.order_no.toUpperCase(), req.body.phone]);
+// Track by order number only. Returns NO personal data (no phone/address/email).
+const trackLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, message: { message: 'Too many attempts, try again later' } });
+r.post('/track', trackLimiter, validate(z.object({ order_no: z.string().trim().min(6).max(30) })), ah(async (req, res) => {
+  const [o] = await q('SELECT id,order_no,status,payment_method,payment_status,subtotal,discount,shipping_fee,total,created_at FROM orders WHERE order_no=?', [req.body.order_no.toUpperCase()]);
   if (!o) throw new HttpError(404, 'Order not found');
   res.json(await detail(o));
 }));
