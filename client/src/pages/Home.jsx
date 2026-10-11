@@ -72,9 +72,9 @@ export default function Home() {
 
       {best.length > 0 && <section className={sec}><Head title={t('best')} to="/shop?best=1" /><Carousel items={best} /></section>}
 
-      {cats.length > 0 && <section className={sec}><Head title={t('shopByCat')}>
-        <div className="no-scrollbar flex max-w-full gap-2 overflow-x-auto rounded-full bg-slate-100 p-1.5">{cats.map((c) => <button key={c.id} onClick={() => setTab(c.id)} className={`relative whitespace-nowrap rounded-full px-5 py-2 text-sm font-semibold transition ${tab === c.id ? 'text-white' : 'text-slate-600 hover:text-brand-600'}`}>
-          {tab === c.id && <motion.span layoutId="ctab" className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-600 to-violet-600 shadow-lg shadow-brand-600/30" />}<span className="relative">{pick(c, 'name')}</span></button>)}</div></Head>
+      {cats.length > 0 && <section className={sec}><Head title={t('shopByCat')} />
+        <div className="mb-7 flex flex-wrap gap-2.5">{cats.map((c) => <button key={c.id} onClick={() => setTab(c.id)} className={`relative whitespace-nowrap rounded-full px-5 py-2 text-sm font-semibold transition ${tab === c.id ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-brand-50 hover:text-brand-600'}`}>
+          {tab === c.id && <motion.span layoutId="ctab" className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-600 to-violet-600 shadow-lg shadow-brand-600/30" />}<span className="relative">{pick(c, 'name')}</span></button>)}</div>
         <AnimatePresence mode="wait"><motion.div key={tab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
           {!tabItems ? <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton aspect-[3/4]" />)}</div>
             : tabItems.length === 0 ? <p className="py-12 text-center text-slate-400">{t('noResult')}</p>

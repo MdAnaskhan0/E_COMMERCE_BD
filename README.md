@@ -106,7 +106,17 @@ npm run dev       # http://localhost:5173
   solved the issue on 02/10/2026
 
 ## next work:
-  - Mobile responsive need 
+  - In header we see category I want to change the UI Category, here not showing all category here want to see all category and dropdown every subcategory. 
+
+  - In Hero/Banner are I want a Slider here and 4/5 Slider image will be show here which can be managed by admin in admin panel. Banner Text and image is ok now.
+
+  -  Home Page UI need to be change Look more professional to show the product.
+
+  - Change Product Card UI Design look more professional and intersting.
+
+  - Single product page UI need more professional and Intersting
+    - "Details" showing simple text but need more professional like when write description here can Bold, Title, Header. 
+    - Feature page show 2 column but I want in single collumn. 
 
 
 
