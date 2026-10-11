@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FiArrowLeft, FiInfo, FiDollarSign, FiList, FiImage, FiFileText, FiPlus, FiX, FiUploadCloud, FiSave } from 'react-icons/fi';
 import api, { fail } from '../../api';
+import RichEditor from '../../components/RichEditor';
 
 const init = { name_en: '', name_bn: '', sku: '', brand: '', category_id: '', sub_category_id: '', price: '', sale_price: '', stock: 0, unit: 'pcs', weight: '', description_en: '', description_bn: '', is_featured: false, is_active: true };
 
@@ -71,9 +72,9 @@ export default function ProductForm() {
           <FiUploadCloud className="text-3xl text-brand-600" /><span className="font-semibold">Click to upload images</span><span className="text-xs">JPG, PNG, WEBP · max 3MB each · up to 8</span>
           <input type="file" multiple hidden accept="image/jpeg,image/png,image/webp" onChange={(e) => { setFiles([...files, ...e.target.files].slice(0, 8)); e.target.value = ''; }} /></label>
       </Section>
-      <Section icon={FiFileText} title="Description">
-        <div className="grid gap-4 md:grid-cols-2"><Field label="Description (English)"><textarea rows="6" className="input" value={f.description_en} onChange={on('description_en')} /></Field>
-          <Field label="বিবরণ (বাংলা)"><textarea rows="6" className="input" value={f.description_bn} onChange={on('description_bn')} /></Field></div>
+      <Section icon={FiFileText} title="Description (Title, Header, Bold, Lists…)">
+        <div className="space-y-6"><Field label="Description (English)"><RichEditor value={f.description_en} onChange={(v) => setF((p) => ({ ...p, description_en: v }))} placeholder="Write product details here. Use the toolbar for Title, Header, Bold, lists…" /></Field>
+          <Field label="বিবরণ (বাংলা)"><RichEditor value={f.description_bn} onChange={(v) => setF((p) => ({ ...p, description_bn: v }))} placeholder="এখানে পণ্যের বিবরণ লিখুন…" /></Field></div>
       </Section>
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/90 px-6 py-3 backdrop-blur lg:left-64"><div className="mx-auto flex max-w-5xl justify-end gap-3">
         <Link to="/admin/products" className="btn-ghost">Cancel</Link><button disabled={busy} className="btn-primary"><FiSave />{busy ? 'Saving…' : 'Save product'}</button></div></div>

@@ -6,6 +6,7 @@ import { pool, q } from '../config/db.js';
 import { ah, validate, HttpError } from '../utils/helpers.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { upload, uploadsDir } from '../middleware/upload.js';
+import { cleanHtml } from '../utils/sanitize.js';
 
 const r = Router();
 r.use(requireAdmin);
@@ -51,7 +52,7 @@ const productSchema = z.object({
   name_en: z.string().trim().min(2).max(255), name_bn: z.string().trim().max(255).default(''), sku: z.string().trim().max(60).nullable().optional().transform((v) => v || null),
   brand: z.string().trim().max(120).default(''), category_id: z.number().int().positive(), sub_category_id: z.number().int().positive().nullable().optional(),
   price: z.number().positive(), sale_price: z.number().positive().nullable().optional(), stock: z.number().int().min(0), unit: z.string().max(30).default('pcs'), weight: z.string().max(40).default(''),
-  description_en: z.string().max(10000).default(''), description_bn: z.string().max(10000).default(''), is_featured: bool.default(0), is_active: bool.default(1),
+  description_en: z.string().max(30000).default('').transform(cleanHtml), description_bn: z.string().max(30000).default('').transform(cleanHtml), is_featured: bool.default(0), is_active: bool.default(1),
   features: z.array(z.object({ k: z.string().trim().min(1).max(120), v: z.string().trim().min(1).max(255) })).max(40).default([]),
   tiers: z.array(z.object({ min_qty: z.number().int().min(2), unit_price: z.number().positive() })).max(10).default([]),
   remove_image_ids: z.array(z.number().int()).default([]),
@@ -86,6 +87,36 @@ const saveProduct = (isNew) => ah(async (req, res) => {
 r.post('/products', upload.array('images', 8), saveProduct(true));
 r.put('/products/:id', upload.array('images', 8), saveProduct(false));
 r.delete('/products/:id', ah(async (req, res) => { await q('DELETE FROM products WHERE id=?', [req.params.id]); res.json({ ok: true }); }));
+
+// ---------- banners (home slider, max 5) ----------
+const bannerSchema = z.object({ title_en: z.string().max(150).default(''), title_bn: z.string().max(150).default(''), subtitle_en: z.string().max(300).default(''), subtitle_bn: z.string().max(300).default(''),
+  button_text: z.string().max(40).default(''), link: z.string().max(255).default('').refine((v) => v === '' || /^(\/|https?:\/\/)/.test(v), 'Link must start with / or https://'),
+  sort_order: z.coerce.number().int().min(0).max(99).default(0), is_active: bool.default(1) });
+r.get('/banners', ah(async (_req, res) => res.json(await q('SELECT * FROM banners ORDER BY sort_order, id'))));
+r.post('/banners', upload.single('image'), ah(async (req, res) => {
+  if (!req.file) throw new HttpError(400, 'Slide image is required');
+  try {
+    if ((await q('SELECT COUNT(*) c FROM banners'))[0].c >= 5) throw new HttpError(400, 'Maximum 5 slides allowed');
+    const b = bannerSchema.parse(JSON.parse(req.body.data || '{}'));
+    const { insertId } = await q('INSERT INTO banners (image,title_en,title_bn,subtitle_en,subtitle_bn,button_text,link,sort_order,is_active) VALUES (?,?,?,?,?,?,?,?,?)',
+      [`/uploads/${req.file.filename}`, b.title_en, b.title_bn, b.subtitle_en, b.subtitle_bn, b.button_text, b.link, b.sort_order, b.is_active]);
+    res.status(201).json({ id: insertId });
+  } catch (e) { fs.unlink(req.file.path).catch(() => {}); throw e; }
+}));
+r.put('/banners/:id', upload.single('image'), ah(async (req, res) => {
+  try {
+    const b = bannerSchema.parse(JSON.parse(req.body.data || '{}'));
+    const [old] = await q('SELECT image FROM banners WHERE id=?', [req.params.id]); if (!old) throw new HttpError(404, 'Not found');
+    const image = req.file ? `/uploads/${req.file.filename}` : old.image;
+    await q('UPDATE banners SET image=?,title_en=?,title_bn=?,subtitle_en=?,subtitle_bn=?,button_text=?,link=?,sort_order=?,is_active=? WHERE id=?', [image, b.title_en, b.title_bn, b.subtitle_en, b.subtitle_bn, b.button_text, b.link, b.sort_order, b.is_active, req.params.id]);
+    if (req.file) fs.unlink(path.join(uploadsDir, path.basename(old.image))).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { if (req.file) fs.unlink(req.file.path).catch(() => {}); throw e; }
+}));
+r.delete('/banners/:id', ah(async (req, res) => {
+  const [old] = await q('SELECT image FROM banners WHERE id=?', [req.params.id]);
+  await q('DELETE FROM banners WHERE id=?', [req.params.id]); if (old) fs.unlink(path.join(uploadsDir, path.basename(old.image))).catch(() => {}); res.json({ ok: true });
+}));
 
 // ---------- orders ----------
 const FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiGrid, FiUsers, FiTag, FiLayers, FiBox, FiShoppingBag, FiPercent, FiStar, FiSettings, FiExternalLink, FiMenu, FiX } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiTag, FiLayers, FiBox, FiShoppingBag, FiPercent, FiStar, FiSettings, FiExternalLink, FiMenu, FiX, FiImage } from 'react-icons/fi';
 
-const nav = [['/admin', FiGrid, 'Dashboard', true], ['/admin/orders', FiShoppingBag, 'Orders'], ['/admin/products', FiBox, 'Products'], ['/admin/categories', FiTag, 'Categories'], ['/admin/sub-categories', FiLayers, 'Sub-Categories'],
+const nav = [['/admin', FiGrid, 'Dashboard', true], ['/admin/orders', FiShoppingBag, 'Orders'], ['/admin/banners', FiImage, 'Home Slider'], ['/admin/products', FiBox, 'Products'], ['/admin/categories', FiTag, 'Categories'], ['/admin/sub-categories', FiLayers, 'Sub-Categories'],
   ['/admin/users', FiUsers, 'Users'], ['/admin/coupons', FiPercent, 'Coupons'], ['/admin/reviews', FiStar, 'Reviews'], ['/admin/shop-info', FiSettings, 'Shop Info']];
 export default function AdminLayout() {
   const [open, setOpen] = useState(false); const loc = useLocation(); const user = useSelector((s) => s.auth.user); const shop = useSelector((s) => s.ui.shop);

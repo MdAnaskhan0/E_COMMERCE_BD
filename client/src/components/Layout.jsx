@@ -14,7 +14,7 @@ export default function Layout() {
   const { t, lang, pick } = useT(); const d = useDispatch(); const nav = useNavigate(); const loc = useLocation();
   const { user } = useSelector((s) => s.auth); const shop = useSelector((s) => s.ui.shop);
   const count = useSelector((s) => s.cart.items.reduce((a, i) => a + i.qty, 0));
-  const [open, setOpen] = useState(false); const [menu, setMenu] = useState(false); const [term, setTerm] = useState(''); const [cat, setCat] = useState(''); const [cats, setCats] = useState([]); const [top, setTop] = useState(false);
+  const [open, setOpen] = useState(false); const [menu, setMenu] = useState(false); const [term, setTerm] = useState(''); const [cat, setCat] = useState(''); const [cats, setCats] = useState([]); const [top, setTop] = useState(false); const [mega, setMega] = useState(false); const [mobCat, setMobCat] = useState(null);
   useEffect(() => { api.get('/categories').then((r) => setCats(r.data)); }, []);
   useEffect(() => { setOpen(false); setMenu(false); window.scrollTo(0, 0); }, [loc.pathname]);
   useEffect(() => { const f = () => setTop(window.scrollY > 500); window.addEventListener('scroll', f); return () => window.removeEventListener('scroll', f); }, []);
@@ -59,12 +59,30 @@ export default function Layout() {
           </div>
         </div>
         <div className="px-4 pb-3 md:hidden">{SearchBar}</div>
-        <nav className="hidden border-t border-slate-100 md:block"><div className="mx-auto flex max-w-7xl items-center overflow-x-auto px-4">
+        <nav className="relative z-40 hidden border-t border-slate-100 md:block"><div className="mx-auto flex max-w-7xl items-stretch px-4">
+          <div className="relative" onMouseEnter={() => setMega(true)} onMouseLeave={() => setMega(false)}>
+            <button className="flex h-full items-center gap-2 bg-gradient-to-r from-brand-600 to-violet-600 px-5 py-3 text-sm font-bold text-white"><FiGrid />{t('allCats')}<FiChevronDown className={`transition ${mega ? 'rotate-180' : ''}`} /></button>
+            <AnimatePresence>{mega && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.15 }} className="card absolute left-0 top-full z-50 max-h-[70vh] w-[min(920px,92vw)] overflow-y-auto rounded-t-none p-6">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-6 lg:grid-cols-3">{cats.map((c) => (<div key={c.id}>
+                <Link to={`/shop?category=${c.id}`} onClick={() => setMega(false)} className="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2 font-bold text-brand-700 hover:text-brand-600"><span className="h-2 w-2 rounded-full bg-gradient-to-br from-brand-600 to-violet-600" />{pick(c, 'name')}</Link>
+                <div className="flex flex-col">{c.subs.map((x) => <Link key={x.id} to={`/shop?category=${c.id}&sub=${x.id}`} onClick={() => setMega(false)} className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-brand-50 hover:text-brand-600">{pick(x, 'name')}</Link>)}</div></div>))}</div>
+              {cats.length === 0 && <p className="text-sm text-slate-400">—</p>}</motion.div>}</AnimatePresence></div>
           <NavLink to="/" end className={nl}>{t('home')}</NavLink><NavLink to="/shop" end className={nl}>{t('shop')}</NavLink>
-          {cats.slice(0, 6).map((c) => <Link key={c.id} to={`/shop?category=${c.id}`} className="whitespace-nowrap px-4 py-3 text-sm text-slate-500 transition hover:text-brand-600">{pick(c, 'name')}</Link>)}
+          <div className="flex flex-wrap items-center">{cats.map((c) => (<div key={c.id} className="group relative">
+            <Link to={`/shop?category=${c.id}`} className="flex items-center gap-1 whitespace-nowrap px-3.5 py-3 text-sm text-slate-600 transition group-hover:text-brand-600">{pick(c, 'name')}{c.subs.length > 0 && <FiChevronDown size={13} className="transition group-hover:rotate-180" />}</Link>
+            {c.subs.length > 0 && <div className="invisible absolute left-0 top-full z-50 min-w-[220px] translate-y-2 opacity-0 transition duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="card mt-0 overflow-hidden py-2"><Link to={`/shop?category=${c.id}`} className="block px-4 py-2 text-sm font-bold text-brand-600 hover:bg-brand-50">{t('seeAllCats')} →</Link>
+                {c.subs.map((x) => <Link key={x.id} to={`/shop?category=${c.id}&sub=${x.id}`} className="block px-4 py-2 text-sm text-slate-600 transition hover:bg-brand-50 hover:pl-5 hover:text-brand-600">{pick(x, 'name')}</Link>)}</div></div>}
+          </div>))}</div>
           <NavLink to="/track" className={`${nl} ml-auto`}>{t('track')}</NavLink></div></nav>
-        <AnimatePresence>{open && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t md:hidden">
-          {[['/', t('home')], ['/shop', t('shop')], ...cats.map((c) => [`/shop?category=${c.id}`, pick(c, 'name')]), ['/track', t('track')], ['/cart', t('cart')]].map(([to, l]) => <Link key={to} to={to} className="block px-5 py-3 text-sm font-semibold hover:bg-slate-50">{l}</Link>)}
+        <AnimatePresence>{open && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="max-h-[70vh] overflow-y-auto border-t md:hidden">
+          {[['/', t('home')], ['/shop', t('shop')]].map(([to, l]) => <Link key={to} to={to} className="block px-5 py-3 text-sm font-semibold hover:bg-slate-50">{l}</Link>)}
+          <p className="bg-slate-50 px-5 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">{t('categories')}</p>
+          {cats.map((c) => (<div key={c.id}>
+            <div className="flex items-center justify-between hover:bg-slate-50"><Link to={`/shop?category=${c.id}`} className="flex-1 px-5 py-3 text-sm font-semibold">{pick(c, 'name')}</Link>
+              {c.subs.length > 0 && <button className="px-5 py-3" onClick={() => setMobCat(mobCat === c.id ? null : c.id)}><FiChevronDown className={`transition ${mobCat === c.id ? 'rotate-180' : ''}`} /></button>}</div>
+            <AnimatePresence>{mobCat === c.id && <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden bg-slate-50">{c.subs.map((x) => <Link key={x.id} to={`/shop?category=${c.id}&sub=${x.id}`} className="block py-2.5 pl-9 pr-5 text-sm text-slate-600">{pick(x, 'name')}</Link>)}</motion.div>}</AnimatePresence></div>))}
+          {[['/track', t('track')], ['/cart', t('cart')]].map(([to, l]) => <Link key={to} to={to} className="block px-5 py-3 text-sm font-semibold hover:bg-slate-50">{l}</Link>)}
         </motion.div>}</AnimatePresence>
       </header>
       <AnimatePresence mode="wait"><motion.main key={loc.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="flex-1"><Outlet /></motion.main></AnimatePresence>

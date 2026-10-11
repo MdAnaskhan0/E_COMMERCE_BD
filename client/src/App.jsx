@@ -16,6 +16,7 @@ const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const Products = lazy(() => import('./pages/admin/Products'));
 const ProductForm = lazy(() => import('./pages/admin/ProductForm'));
+const Banners = lazy(() => import('./pages/admin/Banners'));
 const Orders = lazy(() => import('./pages/admin/Orders'));
 const OrderDetail = lazy(() => import('./pages/admin/OrderDetail'));
 const Reviews = lazy(() => import('./pages/admin/Reviews'));
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="products" element={<Products />} />
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/:id" element={<ProductForm />} />
+          <Route path="banners" element={<Banners />} />
           <Route path="orders" element={<Orders />} />
           <Route path="orders/:id" element={<OrderDetail />} />
           <Route path="coupons" element={<Coupons />} />

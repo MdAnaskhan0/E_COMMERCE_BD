@@ -9,6 +9,7 @@ import { addItem } from '../store';
 import { useT } from '../i18n';
 import ProductCard from '../components/ProductCard';
 import Spinner from '../components/Spinner';
+import RichText from '../components/RichText';
 
 const Stars = ({ n, size = 16 }) => <span className="flex text-amber-400">{[1, 2, 3, 4, 5].map((i) => <FiStar key={i} size={size} className={i <= Math.round(n) ? 'fill-current' : 'text-slate-300'} />)}</span>;
 
@@ -26,7 +27,7 @@ export default function ProductDetail() {
   const move = (e) => { const r = e.currentTarget.getBoundingClientRect(); setZoom(`${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`); };
   const tabs = [['details', t('details')], ['features', `${t('features')} (${p.features.length})`], ['reviews', `${t('reviews')} (${p.reviews.length})`]];
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
+    <div className="mx-auto max-w-7xl px-4 py-6 pb-28 lg:pb-6">
       <nav className="mb-5 flex items-center gap-1.5 text-xs text-slate-500"><Link to="/" className="hover:text-brand-600">{t('home')}</Link><FiChevronRight /><Link to={`/shop?category=${p.category_id}`} className="hover:text-brand-600">{pick({ name_en: p.cat_en, name_bn: p.cat_bn }, 'name')}</Link><FiChevronRight /><span className="truncate font-semibold text-slate-700">{pick(p, 'name')}</span></nav>
       <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
         <div className="flex gap-4 max-md:flex-col-reverse">
@@ -54,13 +55,14 @@ export default function ProductDetail() {
             <button disabled={p.stock < 1} className="btn-primary flex-1 !rounded-2xl !py-3.5" onClick={() => add(true)}><FiZap />{t('buyNow')}</button>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">{[[FiTruck, t('deliveryNote')], [FiShield, t('securePay')], [FiRefreshCw, t('easyReturn')]].map(([I, l], k) => <div key={k} className="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-3 text-xs font-medium"><I className="shrink-0 text-lg text-brand-600" />{l}</div>)}</div>
+          <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 text-sm sm:grid-cols-4">{[[t('sku'), p.sku], [t('unitW'), p.unit], [t('weightW'), p.weight], [t('sold'), p.sold_count]].map(([l, v]) => <div key={l} className="bg-white px-4 py-3"><p className="text-[11px] uppercase tracking-wide text-slate-400">{l}</p><p className="truncate font-bold">{v || '—'}</p></div>)}</div>
         </div>
       </div>
       <section className="card mt-10 overflow-hidden">
         <div className="flex gap-1 border-b bg-slate-50/70 px-4">{tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={`relative px-5 py-4 text-sm font-bold transition ${tab === k ? 'text-brand-600' : 'text-slate-500 hover:text-slate-800'}`}>{l}{tab === k && <motion.span layoutId="tab" className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600" />}</button>)}</div>
         <div className="p-6">
-          {tab === 'details' && <p className="whitespace-pre-line leading-relaxed text-slate-700">{pick(p, 'description') || '—'}</p>}
-          {tab === 'features' && <div className="grid gap-x-10 md:grid-cols-2">{p.features.map((f, k) => <div key={k} className="flex justify-between border-b border-slate-100 py-3 text-sm"><span className="text-slate-500">{f.k}</span><b>{f.v}</b></div>)}{p.features.length === 0 && '—'}</div>}
+          {tab === 'details' && <RichText html={pick(p, 'description')} />}
+          {tab === 'features' && (p.features.length === 0 ? '—' : <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-slate-200">{p.features.map((f, k) => <div key={k} className={`grid grid-cols-[38%_1fr] gap-4 px-5 py-3.5 text-sm ${k % 2 ? 'bg-slate-50/70' : 'bg-white'} ${k ? 'border-t border-slate-100' : ''}`}><span className="font-medium text-slate-500">{f.k}</span><b className="text-slate-900">{f.v}</b></div>)}</div>)}
           {tab === 'reviews' && <div className="grid gap-8 md:grid-cols-[1fr_340px]"><div>{p.reviews.length === 0 && <p className="text-slate-400">—</p>}
             {p.reviews.map((r) => <div key={r.id} className="flex gap-3 border-b border-slate-100 py-4"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-violet-600 font-bold text-white">{r.name[0]}</span><div><div className="flex items-center gap-2"><b className="text-sm">{r.name}</b><Stars n={r.rating} size={13} /></div><p className="mt-1 text-sm text-slate-600">{r.comment}</p></div></div>)}</div>
             <div className="h-fit rounded-2xl bg-slate-50 p-5"><h4 className="mb-3 font-bold">{t('writeReview')}</h4>{user ? <div className="space-y-3">
@@ -70,6 +72,11 @@ export default function ProductDetail() {
         </div>
       </section>
       {rel.length > 0 && <section className="mt-14"><div className="section-title"><span>{t('related')}</span></div><div className="grid grid-cols-2 gap-5 md:grid-cols-4">{rel.map((x) => <ProductCard key={x.id} p={x} />)}</div></section>}
+
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <div className="leading-tight"><p className="text-[11px] text-slate-500">{t('total')}</p><p className="text-lg font-extrabold text-brand-700">{money(unit * qty)}</p></div>
+        <button disabled={p.stock < 1} className="btn-ghost flex-1 !rounded-2xl" onClick={() => add(false)}><FiShoppingCart />{t('addCart')}</button>
+        <button disabled={p.stock < 1} className="btn-primary flex-1 !rounded-2xl" onClick={() => add(true)}><FiZap />{t('buyNow')}</button></div>
     </div>
   );
 }

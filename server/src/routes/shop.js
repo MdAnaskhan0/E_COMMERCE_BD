@@ -13,6 +13,7 @@ const LIST = `SELECT p.id,p.name_en,p.name_bn,p.price,p.sale_price,p.stock,p.uni
   (SELECT COUNT(*) FROM reviews WHERE product_id=p.id AND is_approved=1) AS review_count
   FROM products p WHERE p.is_active=1`;
 
+r.get('/banners', ah(async (_req, res) => res.json(await q('SELECT id,image,title_en,title_bn,subtitle_en,subtitle_bn,button_text,link FROM banners WHERE is_active=1 ORDER BY sort_order,id LIMIT 5'))));
 r.get('/shop-info', ah(async (_req, res) => { const [s] = await q('SELECT * FROM shop_info WHERE id=1'); res.json(s); }));
 
 r.get('/categories', ah(async (_req, res) => {
