@@ -11,11 +11,44 @@ import Logo from './Logo';
 import CategoryBar from './CategoryBar';
 import { toast } from 'react-toastify';
 
+function useTypewriterLoop(text = '', speed = 45, pause = 2000) {
+  const [displayed, setDisplayed] = useState('');
+  const [phase, setPhase] = useState('typing'); // typing | pausing | deleting
+
+  useEffect(() => {
+    setDisplayed('');
+    setPhase('typing');
+  }, [text]);
+
+  useEffect(() => {
+    if (!text) return;
+    let timeout;
+
+    if (phase === 'typing') {
+      if (displayed.length < text.length) {
+        timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
+      } else {
+        timeout = setTimeout(() => setPhase('deleting'), pause);
+      }
+    } else if (phase === 'deleting') {
+      if (displayed.length > 0) {
+        timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length - 1)), speed / 2);
+      } else {
+        setPhase('typing');
+      }
+    }
+    return () => clearTimeout(timeout);
+  }, [displayed, phase, text, speed, pause]);
+
+  return displayed;
+}
+
 export default function Layout() {
   const { t, lang, pick } = useT(); const d = useDispatch(); const nav = useNavigate(); const loc = useLocation();
   const { user } = useSelector((s) => s.auth); const shop = useSelector((s) => s.ui.shop);
   const count = useSelector((s) => s.cart.items.reduce((a, i) => a + i.qty, 0));
   const [open, setOpen] = useState(false); const [menu, setMenu] = useState(false); const [term, setTerm] = useState(''); const [cat, setCat] = useState(''); const [cats, setCats] = useState([]); const [top, setTop] = useState(false);
+  const typedNotice = useTypewriterLoop(shop?.notice || '', 45, 2000);
   useEffect(() => { api.get('/categories').then((r) => setCats(r.data)); }, []);
   useEffect(() => { setOpen(false); setMenu(false); window.scrollTo(0, 0); }, [loc.pathname]);
   useEffect(() => { const f = () => setTop(window.scrollY > 500); window.addEventListener('scroll', f); return () => window.removeEventListener('scroll', f); }, []);
@@ -34,7 +67,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <div className="hidden bg-slate-900 text-xs text-slate-300 md:block"><div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-        <span className="flex items-center gap-2 truncate"><FiTruck className="text-brand-500" />{shop?.notice}</span>
+        <span className="flex items-center gap-2 truncate"><FiTruck className="shrink-0 text-brand-500" /><span className="truncate">{typedNotice}<span className="ml-0.5 inline-block w-[2px] animate-pulse bg-brand-500 align-middle" style={{ height: '1em' }} /></span></span>
         <div className="flex items-center gap-5">{shop?.phone && <span className="flex items-center gap-1.5"><FiPhone />{shop.phone}</span>}
           <button onClick={() => d(setLang(lang === 'en' ? 'bn' : 'en'))} className="rounded-full bg-white/10 px-3 py-0.5 font-bold text-white transition hover:bg-brand-600">{lang === 'en' ? 'বাংলা' : 'English'}</button></div></div></div>
       <header className="sticky top-0 z-40 bg-white/90 shadow-sm backdrop-blur-xl">
