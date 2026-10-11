@@ -102,3 +102,12 @@ npm run dev       # http://localhost:5173
   - Product Card, Single Product Page UI need to be change.
   - Checkout Page: Payment option not Dropdown use radio, If select Bkash/Nagad get a popup screen show amount to pay and Bkash/Nagad Number and get Transaction ID by input. Admin will check Transaction ID and update Payment Status.
   - Admin Panel Order Manage Page UI need to be update like click on the order and the order manage page will come then he will update order/payment status.
+
+  solved the issue on 02/10/2026
+
+## next work:
+  - Mobile responsive need 
+
+
+
+
