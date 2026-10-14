@@ -129,3 +129,13 @@ npm run dev       # http://localhost:5173
 
 
 
+## next work:
+  - Footer UI need to be change quick link and information Just simple text no icon or hifen need.
+  - Layout.jsx : this notice give a written animation 
+    <span className="flex items-center gap-2 truncate">
+        <FiTruck className="text-brand-500" />
+        {shop?.notice}
+    </span>
+
+## next work:
+  - Product Page show pagination or load more button so that server don't send all product data it will be crush server when user is more.
