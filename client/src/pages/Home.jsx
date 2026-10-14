@@ -6,6 +6,7 @@ import api from '../api';
 import { useT } from '../i18n';
 import ProductCard from '../components/ProductCard';
 import HeroSlider from '../components/HeroSlider';
+import OfferCard from '../components/OfferCard';
 
 const Head = ({ title, sub, to, children }) => { const { t } = useT(); return (
   <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
@@ -37,9 +38,10 @@ const GRADS = ['from-indigo-500 to-violet-500', 'from-pink-500 to-rose-500', 'fr
 
 export default function Home() {
   const { t, pick } = useT(); const [cats, setCats] = useState([]); const [feat, setFeat] = useState([]); const [best, setBest] = useState([]); const [latest, setLatest] = useState([]);
-  const [tab, setTab] = useState(null); const [tabItems, setTabItems] = useState(null);
+  const [offers, setOffers] = useState([]); const [tab, setTab] = useState(null); const [tabItems, setTabItems] = useState(null);
   useEffect(() => {
     api.get('/categories').then((r) => { setCats(r.data); if (r.data[0]) setTab(r.data[0].id); });
+    api.get('/offers').then((r) => setOffers(r.data.slice(0, 3)));
     api.get('/products?featured=1&limit=8').then((r) => setFeat(r.data.items));
     api.get('/products?best=1&limit=10').then((r) => setBest(r.data.items));
     api.get('/products?limit=8').then((r) => setLatest(r.data.items));
@@ -60,6 +62,9 @@ export default function Home() {
           <motion.div whileHover={{ y: -6 }} className="group relative overflow-hidden rounded-3xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-200/70 transition hover:shadow-xl hover:ring-brand-500/30">
             <span className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl text-white shadow-lg transition group-hover:rotate-6 group-hover:scale-110 ${GRADS[i % GRADS.length]}`}><FiGrid /></span>
             <p className="mt-3 text-sm font-bold">{pick(c, 'name')}</p><p className="text-[11px] text-slate-400">{c.subs.length > 0 ? `${c.subs.length} ${t('categories').toLowerCase()}` : t('browse')}</p></motion.div></Link>)}</div></section>}
+
+      {offers.length > 0 && <section className={sec}><Head title={t('latestOffers')} sub={t('offersSub')} to="/offers" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{offers.map((o, i) => <OfferCard key={o.id} o={o} i={i} />)}</div></section>}
 
       {feat.length > 0 && <section className={sec}><Head title={t('featured')} to="/shop?featured=1" />
         <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">{feat.slice(0, 8).map((p) => <ProductCard key={p.id} p={p} />)}</div></section>}

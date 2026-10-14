@@ -14,6 +14,18 @@ const LIST = `SELECT p.id,p.name_en,p.name_bn,p.price,p.sale_price,p.stock,p.uni
   FROM products p WHERE p.is_active=1`;
 
 r.get('/banners', ah(async (_req, res) => res.json(await q('SELECT id,image,title_en,title_bn,subtitle_en,subtitle_bn,button_text,link FROM banners WHERE is_active=1 ORDER BY sort_order,id LIMIT 5'))));
+const OFFER_COLS = 'id,title_en,title_bn,summary_en,summary_bn,image,badge,coupon_code,link,starts_at,ends_at';
+const RUNNING = 'is_active=1 AND (starts_at IS NULL OR starts_at<=CURDATE()) AND (ends_at IS NULL OR ends_at>=CURDATE())';
+r.get('/offers', ah(async (_req, res) => res.json(await q(`SELECT ${OFFER_COLS} FROM offers WHERE ${RUNNING} ORDER BY sort_order, id DESC`))));
+r.get('/offers/:id', ah(async (req, res) => {
+  const [o] = await q(`SELECT ${OFFER_COLS},description_en,description_bn FROM offers WHERE id=? AND ${RUNNING}`, [req.params.id]);
+  if (!o) throw new HttpError(404, 'This offer is not available (it may have ended)');
+  res.json(o);
+}));
+r.get('/pages/:slug', ah(async (req, res) => {
+  const [p] = await q('SELECT slug,title_en,title_bn,content_en,content_bn,updated_at FROM site_pages WHERE slug=?', [req.params.slug]);
+  if (!p) throw new HttpError(404, 'Page not found'); res.json(p);
+}));
 r.get('/shop-info', ah(async (_req, res) => { const [s] = await q('SELECT * FROM shop_info WHERE id=1'); res.json(s); }));
 
 r.get('/categories', ah(async (_req, res) => {

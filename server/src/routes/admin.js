@@ -7,6 +7,7 @@ import { ah, validate, HttpError } from '../utils/helpers.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { upload, uploadsDir } from '../middleware/upload.js';
 import { cleanHtml } from '../utils/sanitize.js';
+import { PAGE_SLUGS } from '../utils/defaultPages.js';
 
 const r = Router();
 r.use(requireAdmin);
@@ -87,6 +88,47 @@ const saveProduct = (isNew) => ah(async (req, res) => {
 r.post('/products', upload.array('images', 8), saveProduct(true));
 r.put('/products/:id', upload.array('images', 8), saveProduct(false));
 r.delete('/products/:id', ah(async (req, res) => { await q('DELETE FROM products WHERE id=?', [req.params.id]); res.json({ ok: true }); }));
+
+// ---------- offers ----------
+const dateOrNull = z.string().nullable().optional().transform((v) => v || null).refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), 'Invalid date');
+const offerSchema = z.object({ title_en: z.string().trim().max(200).default(''), title_bn: z.string().trim().max(200).default(''), summary_en: z.string().trim().max(400).default(''), summary_bn: z.string().trim().max(400).default(''),
+  description_en: z.string().max(30000).default('').transform(cleanHtml), description_bn: z.string().max(30000).default('').transform(cleanHtml), badge: z.string().trim().max(40).default(''),
+  coupon_code: z.string().trim().toUpperCase().max(40).default(''), link: z.string().max(255).default('').refine((v) => v === '' || /^(\/|https?:\/\/)/.test(v), 'Link must start with / or https://'),
+  starts_at: dateOrNull, ends_at: dateOrNull, sort_order: z.coerce.number().int().min(0).max(999).default(0), is_active: bool.default(1) })
+  .refine((o) => o.title_en || o.title_bn, { message: 'Enter a title (English or Bangla)', path: ['title_en'] })
+  .refine((o) => !o.starts_at || !o.ends_at || o.starts_at <= o.ends_at, { message: 'End date must be after start date', path: ['ends_at'] });
+const OF = ['title_en', 'title_bn', 'summary_en', 'summary_bn', 'description_en', 'description_bn', 'badge', 'coupon_code', 'link', 'starts_at', 'ends_at', 'sort_order', 'is_active'];
+r.get('/offers', ah(async (_req, res) => res.json(await q('SELECT * FROM offers ORDER BY sort_order, id DESC'))));
+r.post('/offers', upload.single('image'), ah(async (req, res) => {
+  try {
+    if (!req.file) throw new HttpError(400, 'Offer image is required');
+    const o = offerSchema.parse(JSON.parse(req.body.data || '{}'));
+    const { insertId } = await q(`INSERT INTO offers (image,${OF.join(',')}) VALUES (?,${OF.map(() => '?').join(',')})`, [`/uploads/${req.file.filename}`, ...OF.map((k) => o[k])]);
+    res.status(201).json({ id: insertId });
+  } catch (e) { if (req.file) fs.unlink(req.file.path).catch(() => {}); throw e; }
+}));
+r.put('/offers/:id', upload.single('image'), ah(async (req, res) => {
+  try {
+    const o = offerSchema.parse(JSON.parse(req.body.data || '{}'));
+    const [old] = await q('SELECT image FROM offers WHERE id=?', [req.params.id]); if (!old) throw new HttpError(404, 'Not found');
+    await q(`UPDATE offers SET image=?,${OF.map((k) => `${k}=?`).join(',')} WHERE id=?`, [req.file ? `/uploads/${req.file.filename}` : old.image, ...OF.map((k) => o[k]), req.params.id]);
+    if (req.file) fs.unlink(path.join(uploadsDir, path.basename(old.image))).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { if (req.file) fs.unlink(req.file.path).catch(() => {}); throw e; }
+}));
+r.delete('/offers/:id', ah(async (req, res) => {
+  const [old] = await q('SELECT image FROM offers WHERE id=?', [req.params.id]);
+  await q('DELETE FROM offers WHERE id=?', [req.params.id]); if (old) fs.unlink(path.join(uploadsDir, path.basename(old.image))).catch(() => {}); res.json({ ok: true });
+}));
+
+// ---------- info pages (About, Terms, Privacy, Refund) ----------
+r.get('/pages', ah(async (_req, res) => res.json(await q('SELECT * FROM site_pages ORDER BY FIELD(slug,?)', [PAGE_SLUGS]))));
+r.put('/pages/:slug', validate(z.object({ title_en: z.string().trim().min(1).max(150), title_bn: z.string().trim().max(150).default(''),
+  content_en: z.string().max(60000).default('').transform(cleanHtml), content_bn: z.string().max(60000).default('').transform(cleanHtml) })), ah(async (req, res) => {
+  if (!PAGE_SLUGS.includes(req.params.slug)) throw new HttpError(404, 'Unknown page');
+  const b = req.body; await q('UPDATE site_pages SET title_en=?,title_bn=?,content_en=?,content_bn=? WHERE slug=?', [b.title_en, b.title_bn, b.content_en, b.content_bn, req.params.slug]);
+  res.json({ ok: true });
+}));
 
 // ---------- banners (home slider, max 5) ----------
 const bannerSchema = z.object({ title_en: z.string().max(150).default(''), title_bn: z.string().max(150).default(''), subtitle_en: z.string().max(300).default(''), subtitle_bn: z.string().max(300).default(''),

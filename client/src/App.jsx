@@ -7,6 +7,9 @@ import Spinner from './components/Spinner';
 import Home from './pages/Home';
 const Shop = lazy(() => import('./pages/Shop'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Offers = lazy(() => import('./pages/Offers'));
+const OfferDetail = lazy(() => import('./pages/OfferDetail'));
+const InfoPage = lazy(() => import('./pages/InfoPage'));
 const Cart = lazy(() => import('./pages/Cart'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const TrackOrder = lazy(() => import('./pages/TrackOrder'));
@@ -16,6 +19,8 @@ const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const Products = lazy(() => import('./pages/admin/Products'));
 const ProductForm = lazy(() => import('./pages/admin/ProductForm'));
+const AdminOffers = lazy(() => import('./pages/admin/Offers'));
+const AdminPages = lazy(() => import('./pages/admin/Pages'));
 const Banners = lazy(() => import('./pages/admin/Banners'));
 const Orders = lazy(() => import('./pages/admin/Orders'));
 const OrderDetail = lazy(() => import('./pages/admin/OrderDetail'));
@@ -44,6 +49,12 @@ export default function App() {
           <Route index element={<Home />} />
           <Route path="shop" element={<Shop />} />
           <Route path="product/:id" element={<ProductDetail />} />
+          <Route path="offers" element={<Offers />} />
+          <Route path="offers/:id" element={<OfferDetail />} />
+          <Route path="about" element={<InfoPage slug="about" />} />
+          <Route path="terms" element={<InfoPage slug="terms" />} />
+          <Route path="privacy" element={<InfoPage slug="privacy" />} />
+          <Route path="refund" element={<InfoPage slug="refund" />} />
           <Route path="cart" element={<Cart />} />
           <Route path="checkout" element={<Checkout />} />
           <Route path="track" element={<TrackOrder />} />
@@ -60,6 +71,8 @@ export default function App() {
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/:id" element={<ProductForm />} />
           <Route path="banners" element={<Banners />} />
+          <Route path="offers" element={<AdminOffers />} />
+          <Route path="pages" element={<AdminPages />} />
           <Route path="orders" element={<Orders />} />
           <Route path="orders/:id" element={<OrderDetail />} />
           <Route path="coupons" element={<Coupons />} />

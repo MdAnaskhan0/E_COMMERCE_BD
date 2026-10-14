@@ -119,5 +119,13 @@ npm run dev       # http://localhost:5173
     - Feature page show 2 column but I want in single collumn. 
 
 
+## next work:
+  - Offers (Letest Offer) Page, admin can create multiple offer, user show offer Card when click on a offer show full details, Manage by admin panel.
+  - About Us Page
+  - Terms and Condition Page
+  - Privicy and Policy
+  - Refund and Return Policy
+  - Footer UI need to be change and professional UI look like , About Us, Terms and condition, Privicy and Policy, Refund and return policy those page link use in footer not in the navbar.
+
 
 

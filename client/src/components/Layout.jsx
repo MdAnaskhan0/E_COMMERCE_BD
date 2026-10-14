@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiShoppingBag, FiUser, FiSearch, FiMenu, FiX, FiFacebook, FiInstagram, FiYoutube, FiPhone, FiMapPin, FiMail, FiLogOut, FiGrid, FiArrowUp, FiTruck, FiChevronDown } from 'react-icons/fi';
+import { FiShoppingBag, FiUser, FiSearch, FiMenu, FiX, FiFacebook, FiInstagram, FiYoutube, FiPhone, FiMapPin, FiMail, FiLogOut, FiGrid, FiArrowUp, FiTruck, FiChevronDown, FiTag, FiInfo, FiFileText, FiShield, FiRefreshCw, FiHeart } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { setLang, setUser } from '../store';
 import { useT } from '../i18n';
@@ -11,44 +11,11 @@ import Logo from './Logo';
 import CategoryBar from './CategoryBar';
 import { toast } from 'react-toastify';
 
-function useTypewriterLoop(text = '', speed = 45, pause = 2000) {
-  const [displayed, setDisplayed] = useState('');
-  const [phase, setPhase] = useState('typing'); // typing | pausing | deleting
-
-  useEffect(() => {
-    setDisplayed('');
-    setPhase('typing');
-  }, [text]);
-
-  useEffect(() => {
-    if (!text) return;
-    let timeout;
-
-    if (phase === 'typing') {
-      if (displayed.length < text.length) {
-        timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
-      } else {
-        timeout = setTimeout(() => setPhase('deleting'), pause);
-      }
-    } else if (phase === 'deleting') {
-      if (displayed.length > 0) {
-        timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length - 1)), speed / 2);
-      } else {
-        setPhase('typing');
-      }
-    }
-    return () => clearTimeout(timeout);
-  }, [displayed, phase, text, speed, pause]);
-
-  return displayed;
-}
-
 export default function Layout() {
   const { t, lang, pick } = useT(); const d = useDispatch(); const nav = useNavigate(); const loc = useLocation();
   const { user } = useSelector((s) => s.auth); const shop = useSelector((s) => s.ui.shop);
   const count = useSelector((s) => s.cart.items.reduce((a, i) => a + i.qty, 0));
   const [open, setOpen] = useState(false); const [menu, setMenu] = useState(false); const [term, setTerm] = useState(''); const [cat, setCat] = useState(''); const [cats, setCats] = useState([]); const [top, setTop] = useState(false);
-  const typedNotice = useTypewriterLoop(shop?.notice || '', 45, 2000);
   useEffect(() => { api.get('/categories').then((r) => setCats(r.data)); }, []);
   useEffect(() => { setOpen(false); setMenu(false); window.scrollTo(0, 0); }, [loc.pathname]);
   useEffect(() => { const f = () => setTop(window.scrollY > 500); window.addEventListener('scroll', f); return () => window.removeEventListener('scroll', f); }, []);
@@ -67,7 +34,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <div className="hidden bg-slate-900 text-xs text-slate-300 md:block"><div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-        <span className="flex items-center gap-2 truncate"><FiTruck className="shrink-0 text-brand-500" /><span className="truncate">{typedNotice}<span className="ml-0.5 inline-block w-[2px] animate-pulse bg-brand-500 align-middle" style={{ height: '1em' }} /></span></span>
+        <span className="flex items-center gap-2 truncate"><FiTruck className="text-brand-500" />{shop?.notice}</span>
         <div className="flex items-center gap-5">{shop?.phone && <span className="flex items-center gap-1.5"><FiPhone />{shop.phone}</span>}
           <button onClick={() => d(setLang(lang === 'en' ? 'bn' : 'en'))} className="rounded-full bg-white/10 px-3 py-0.5 font-bold text-white transition hover:bg-brand-600">{lang === 'en' ? 'বাংলা' : 'English'}</button></div></div></div>
       <header className="sticky top-0 z-40 bg-white/90 shadow-sm backdrop-blur-xl">
@@ -95,24 +62,48 @@ export default function Layout() {
         <div className="px-4 pb-3 md:hidden">{SearchBar}</div>
         <nav className="hidden border-t border-slate-100 bg-white md:block"><div className="mx-auto flex max-w-7xl items-center gap-4 px-4">
           <CategoryBar cats={cats} />
+          <NavLink to="/offers" className="flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-4 py-1.5 text-sm font-bold text-white shadow-md shadow-rose-500/25 transition hover:brightness-110"><FiTag size={14} />{t('offers')}</NavLink>
           <NavLink to="/track" className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-600 transition hover:border-brand-500 hover:text-brand-600"><FiTruck size={14} />{t('track')}</NavLink></div></nav>
         <AnimatePresence>{open && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="max-h-[70vh] overflow-y-auto border-t md:hidden">
           {[['/', t('home')], ['/shop', t('shop')]].map(([to, l]) => <Link key={to} to={to} className="block px-5 py-3 text-sm font-semibold hover:bg-slate-50">{l}</Link>)}
           <p className="bg-slate-50 px-5 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">{t('categories')}</p>
           <div className="flex flex-wrap gap-2 p-4">{cats.map((c) => <Link key={c.id} to={`/shop?category=${c.id}`} className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-600">{pick(c, 'name')}</Link>)}</div>
-          {[['/track', t('track')], ['/cart', t('cart')]].map(([to, l]) => <Link key={to} to={to} className="block border-t px-5 py-3 text-sm font-semibold hover:bg-slate-50">{l}</Link>)}
+          {[['/offers', t('offers')], ['/track', t('track')], ['/cart', t('cart')]].map(([to, l]) => <Link key={to} to={to} className="block border-t px-5 py-3 text-sm font-semibold hover:bg-slate-50">{l}</Link>)}
         </motion.div>}</AnimatePresence>
       </header>
       <AnimatePresence mode="wait"><motion.main key={loc.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="flex-1"><Outlet /></motion.main></AnimatePresence>
-      <footer className="mt-20 bg-gradient-to-b from-slate-900 to-slate-950 text-sm text-slate-400">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 md:grid-cols-4">
-          <div className="md:col-span-2"><div className="inline-block rounded-2xl bg-white/95 p-2"><Logo className="h-14 max-w-[200px]" /></div><p className="mt-4 max-w-sm">{t('trustLine')}</p>
-            <div className="mt-4 flex gap-3 text-lg">{[[shop?.facebook, FiFacebook], [shop?.instagram, FiInstagram], [shop?.youtube, FiYoutube], [shop?.whatsapp, FaWhatsapp]].map(([u, I], i) => u && <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-slate-200 transition hover:bg-brand-600"><I /></a>)}</div></div>
-          <div><h5 className="mb-3 font-bold text-white">{t('quickLinks')}</h5><div className="flex flex-col gap-2"><Link className="hover:text-white" to="/shop">{t('shop')}</Link><Link className="hover:text-white" to="/track">{t('track')}</Link><Link className="hover:text-white" to="/cart">{t('cart')}</Link></div></div>
-          <div><h5 className="mb-3 font-bold text-white">{t('contact')}</h5><div className="space-y-2">
-            {shop?.address && <p className="flex gap-2"><FiMapPin className="mt-1 shrink-0" />{shop.address}</p>}{shop?.phone && <p className="flex gap-2"><FiPhone className="mt-1" />{shop.phone}</p>}{shop?.email && <p className="flex gap-2"><FiMail className="mt-1" />{shop.email}</p>}</div></div>
+      <footer className="mt-24 bg-slate-950 text-sm text-slate-400">
+        <div className="h-1 bg-gradient-to-r from-brand-600 via-fuchsia-500 to-orange-400" />
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.3fr]">
+          <div>
+            <div className="inline-block rounded-2xl bg-white p-2.5"><Logo className="h-14 max-w-[200px]" /></div>
+            <p className="mt-5 max-w-xs leading-relaxed">{t('trustLine')}</p>
+            <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-widest text-slate-500">{t('follow')}</p>
+            <div className="flex gap-2.5 text-lg">{[[shop?.facebook, FiFacebook, 'hover:bg-blue-600'], [shop?.instagram, FiInstagram, 'hover:bg-pink-600'], [shop?.youtube, FiYoutube, 'hover:bg-red-600'], [shop?.whatsapp, FaWhatsapp, 'hover:bg-green-600']].map(([u, I, c], i) => u && <a key={i} href={u} target="_blank" rel="noopener noreferrer" className={`flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-slate-200 transition hover:-translate-y-1 hover:text-white ${c}`}><I /></a>)}</div>
+          </div>
+          <div>
+            <h5 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">{t('quickLinks')}</h5>
+            <ul className="space-y-3">{[['/', t('home')], ['/shop', t('shop')], ['/offers', t('offers')], ['/track', t('track')], ['/cart', t('cart')]].map(([to, l]) => <li key={to}><Link to={to} className="group inline-flex items-center gap-2 transition hover:text-white"><span className="h-px w-3 bg-slate-600 transition-all group-hover:w-5 group-hover:bg-brand-500" />{l}</Link></li>)}</ul>
+          </div>
+          <div>
+            <h5 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">{t('information')}</h5>
+            <ul className="space-y-3">{[['/about', t('aboutUs'), FiInfo], ['/terms', t('termsT'), FiFileText], ['/privacy', t('privacyT'), FiShield], ['/refund', t('refundT'), FiRefreshCw]].map(([to, l, I]) => <li key={to}><Link to={to} className="group inline-flex items-center gap-2.5 transition hover:text-white"><I className="text-slate-500 transition group-hover:text-brand-500" />{l}</Link></li>)}</ul>
+          </div>
+          <div>
+            <h5 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">{t('getInTouch')}</h5>
+            <ul className="space-y-4">
+              {shop?.address && <li className="flex gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-brand-500"><FiMapPin /></span><span className="pt-1.5 leading-snug">{shop.address}</span></li>}
+              {shop?.phone && <li className="flex gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-brand-500"><FiPhone /></span><a href={`tel:${shop.phone}`} className="pt-1.5 transition hover:text-white">{shop.phone}</a></li>}
+              {shop?.email && <li className="flex gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-brand-500"><FiMail /></span><a href={`mailto:${shop.email}`} className="break-all pt-1.5 transition hover:text-white">{shop.email}</a></li>}
+            </ul>
+            <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-widest text-slate-500">{t('weAccept')}</p>
+            <div className="flex flex-wrap gap-2">{[['bKash', 'bg-pink-600'], ['Nagad', 'bg-orange-500'], [t('cod'), 'bg-emerald-600']].map(([l, c]) => <span key={l} className={`rounded-lg px-3 py-1 text-xs font-bold text-white ${c}`}>{l}</span>)}</div>
+          </div>
         </div>
-        <div className="border-t border-slate-800 py-4 text-center text-xs">© {new Date().getFullYear()} {shop?.shop_name}. All rights reserved.</div>
+        <div className="border-t border-slate-800"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs sm:flex-row">
+          <p>© {new Date().getFullYear()} <b className="text-slate-300">{shop?.shop_name}</b>. {t('rights')}</p>
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-1">{[['/terms', t('termsT')], ['/privacy', t('privacyT')], ['/refund', t('refundT')]].map(([to, l]) => <Link key={to} to={to} className="transition hover:text-white">{l}</Link>)}</div>
+        </div></div>
       </footer>
       <AnimatePresence>{top && <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="btn-primary fixed bottom-6 right-6 z-40 !rounded-full !p-3"><FiArrowUp /></motion.button>}</AnimatePresence>
     </div>
