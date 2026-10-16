@@ -25,6 +25,8 @@ const cart = createSlice({ name: 'cart', initialState: { items: saved }, reducer
 
 export const { setUser } = auth.actions; export const { setLang } = ui.actions;
 export const { addItem, setQty, removeItem, clearCart } = cart.actions;
-export const unitPrice = (i) => { const t = [...(i.tiers || [])].sort((a, b) => b.min_qty - a.min_qty).find((x) => i.qty >= x.min_qty); return t ? t.unit_price : i.sale_price ?? i.price; };
+// Bulk tier price = TOTAL price for min_qty (5 kg = ৳450 → ৳90 each; 7 kg = ৳630). Never multiply the tier price by the quantity.
+export const lineTotal = (i) => { const t = [...(i.tiers || [])].sort((a, b) => b.min_qty - a.min_qty).find((x) => i.qty >= x.min_qty); return Math.round((t ? (Number(t.unit_price) / t.min_qty) * i.qty : Number(i.sale_price ?? i.price) * i.qty) * 100) / 100; };
+export const unitPrice = (i) => lineTotal(i) / i.qty;
 export const store = configureStore({ reducer: { auth: auth.reducer, ui: ui.reducer, cart: cart.reducer } });
 store.subscribe(() => localStorage.setItem('cart', JSON.stringify(store.getState().cart.items)));

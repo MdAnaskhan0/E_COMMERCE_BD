@@ -16,9 +16,10 @@ const schema = z.object({
   payment_method: z.enum(['cod', 'bkash', 'nagad']), payment_trx_id: z.string().trim().regex(/^[A-Za-z0-9]{6,20}$/, 'Invalid Transaction ID').optional(), coupon: z.string().max(40).optional(),
 });
 // Price is ALWAYS recomputed on the server (never trust the browser)
-const unitPrice = (p, tiers, qty) => {
+// A bulk tier's price is the TOTAL price for its min_qty (e.g. 5 kg = 450 ৳), so one unit costs price/min_qty (90 ৳).
+const lineTotalOf = (p, tiers, qty) => {
   const t = tiers.filter((x) => x.product_id === p.id && qty >= x.min_qty).sort((a, b) => b.min_qty - a.min_qty)[0];
-  return t ? t.unit_price : p.sale_price ?? p.price;
+  return Math.round((t ? (Number(t.unit_price) / t.min_qty) * qty : Number(p.sale_price ?? p.price) * qty) * 100) / 100;
 };
 
 r.post('/', optionalAuth, validate(schema), ah(async (req, res) => {
@@ -33,7 +34,7 @@ r.post('/', optionalAuth, validate(schema), ah(async (req, res) => {
     for (const it of b.items) {
       const p = prods.find((x) => x.id === it.product_id); if (!p) throw new HttpError(400, 'A product is unavailable');
       if (p.stock < it.qty) throw new HttpError(400, `Only ${p.stock} left: ${p.name_en}`);
-      const up = unitPrice(p, tiers, it.qty), lt = Math.round(up * it.qty * 100) / 100; subtotal += lt;
+      const lt = lineTotalOf(p, tiers, it.qty), up = Math.round((lt / it.qty) * 100) / 100; subtotal += lt;
       lines.push({ product_id: p.id, product_name: p.name_en + (p.name_bn ? ` / ${p.name_bn}` : ''), unit_price: up, quantity: it.qty, line_total: lt });
     }
     let discount = 0, code = null;

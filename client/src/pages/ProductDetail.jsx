@@ -21,7 +21,7 @@ export default function ProductDetail() {
   useEffect(() => { load(); window.scrollTo(0, 0); }, [id]);
   if (!p) return <Spinner />;
   const tiers = [...p.tiers].sort((a, b) => a.min_qty - b.min_qty); const active = [...tiers].reverse().find((x) => qty >= x.min_qty);
-  const base = p.sale_price ?? p.price; const unit = active ? active.unit_price : base; const save = p.price - unit; const avg = p.reviews.length ? p.reviews.reduce((a, r) => a + r.rating, 0) / p.reviews.length : 0;
+  const base = p.sale_price ?? p.price; const total = active ? (active.unit_price / active.min_qty) * qty : base * qty; const unit = total / qty; const save = p.price * qty - total; const avg = p.reviews.length ? p.reviews.reduce((a, r) => a + r.rating, 0) / p.reviews.length : 0;
   const add = (go) => { d(addItem({ p: { ...p, image: p.images[0]?.url }, qty })); toast.success(t('addedCart')); if (go) nav('/checkout'); };
   const submit = async () => { try { await api.post(`/products/${id}/reviews`, rv); toast.success('✓'); setRv({ rating: 5, comment: '' }); load(); } catch (e) { fail(e); } };
   const move = (e) => { const r = e.currentTarget.getBoundingClientRect(); setZoom(`${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`); };
@@ -42,12 +42,12 @@ export default function ProductDetail() {
           <h1 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight">{pick(p, 'name')}</h1>
           <div className="mt-2 flex items-center gap-3 text-sm"><Stars n={avg} /><span className="text-slate-500">{avg ? avg.toFixed(1) : '—'} · {p.reviews.length} {t('reviews')}</span><span className={`ml-auto flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${p.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>{p.stock > 0 && <FiCheck />}{p.stock > 0 ? `${t('inStock')} (${p.stock})` : t('outStock')}</span></div>
           <div className="mt-5 rounded-3xl bg-gradient-to-br from-brand-50 to-violet-50 p-5">
-            <div className="flex flex-wrap items-baseline gap-3"><motion.span key={unit} initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-4xl font-extrabold text-brand-700">{money(unit)}</motion.span><span className="text-sm text-slate-500">/ {p.unit}</span>
+            <div className="flex flex-wrap items-baseline gap-3"><motion.span key={unit} initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-4xl font-extrabold text-brand-700">{money(Math.round(unit * 100) / 100)}</motion.span><span className="text-sm text-slate-500">/ {p.unit}</span>
               {unit < p.price && <span className="text-lg text-slate-400 line-through">{money(p.price)}</span>}</div>
-            {save > 0 && <p className="mt-1 text-sm font-semibold text-emerald-600">{t('savings')} {money(save * qty)}</p>}
+            {save > 0 && <p className="mt-1 text-sm font-semibold text-emerald-600">{t('savings')} {money(save)}</p>}
             {tiers.length > 0 && <div className="mt-4"><p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">{t('bulk')}</p><div className="flex flex-wrap gap-2">
-              <div className={`rounded-xl border-2 px-3 py-2 text-center text-xs transition ${!active ? 'border-brand-600 bg-white shadow' : 'border-transparent bg-white/60'}`}><b className="block text-sm">{money(base)}</b>1+</div>
-              {tiers.map((x) => <button key={x.min_qty} onClick={() => setQty(Math.min(p.stock, x.min_qty))} className={`rounded-xl border-2 px-3 py-2 text-center text-xs transition ${active?.min_qty === x.min_qty ? 'border-brand-600 bg-white shadow' : 'border-transparent bg-white/60 hover:bg-white'}`}><b className="block text-sm">{money(x.unit_price)}</b>{x.min_qty}+</button>)}</div></div>}
+              <div className={`rounded-xl border-2 px-3 py-2 text-center text-xs transition ${!active ? 'border-brand-600 bg-white shadow' : 'border-transparent bg-white/60'}`}><b className="block text-sm">{money(base)}</b>1 {p.unit}</div>
+              {tiers.map((x) => <button key={x.min_qty} onClick={() => setQty(Math.min(p.stock, x.min_qty))} className={`rounded-xl border-2 px-3 py-2 text-center text-xs transition ${active?.min_qty === x.min_qty ? 'border-brand-600 bg-white shadow' : 'border-transparent bg-white/60 hover:bg-white'}`}><b className="block text-sm">{money(x.unit_price)}</b>{x.min_qty} {p.unit}</button>)}</div></div>}
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <div className="flex items-center rounded-2xl border-2 border-slate-200 bg-white"><button className="p-3.5 transition hover:text-brand-600" onClick={() => setQty(Math.max(1, qty - 1))}><FiMinus /></button><span className="w-12 text-center font-bold">{qty}</span><button className="p-3.5 transition hover:text-brand-600" onClick={() => setQty(Math.min(p.stock, qty + 1))}><FiPlus /></button></div>
@@ -74,7 +74,7 @@ export default function ProductDetail() {
       {rel.length > 0 && <section className="mt-14"><div className="section-title"><span>{t('related')}</span></div><div className="grid grid-cols-2 gap-5 md:grid-cols-4">{rel.map((x) => <ProductCard key={x.id} p={x} />)}</div></section>}
 
       <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
-        <div className="leading-tight"><p className="text-[11px] text-slate-500">{t('total')}</p><p className="text-lg font-extrabold text-brand-700">{money(unit * qty)}</p></div>
+        <div className="leading-tight"><p className="text-[11px] text-slate-500">{t('total')}</p><p className="text-lg font-extrabold text-brand-700">{money(total)}</p></div>
         <button disabled={p.stock < 1} className="btn-ghost flex-1 !rounded-2xl" onClick={() => add(false)}><FiShoppingCart />{t('addCart')}</button>
         <button disabled={p.stock < 1} className="btn-primary flex-1 !rounded-2xl" onClick={() => add(true)}><FiZap />{t('buyNow')}</button></div>
     </div>

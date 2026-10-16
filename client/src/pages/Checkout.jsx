@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FiTruck, FiCheck, FiCopy, FiX, FiLock, FiAlertCircle } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api, { fail, img } from '../api';
-import { clearCart, unitPrice } from '../store';
+import { clearCart, unitPrice, lineTotal } from '../store';
 import { useT } from '../i18n';
 
 const METHODS = {
@@ -20,7 +20,7 @@ export default function Checkout() {
   const [addrs, setAddrs] = useState([]); const [busy, setBusy] = useState(false); const [modal, setModal] = useState(false); const [trx, setTrx] = useState('');
   const [f, setF] = useState({ name: user?.name || '', phone: user?.phone || '', email: user?.email || '', address_line: '', city: '', note: '', payment_method: 'cod' });
   const [code, setCode] = useState(''); const [cp, setCp] = useState(null);
-  const sub = items.reduce((a, i) => a + unitPrice(i) * i.qty, 0); const ship = Number(shop?.shipping_fee || 0); const total = Math.max(0, sub - (cp?.discount || 0)) + ship;
+  const sub = items.reduce((a, i) => a + lineTotal(i), 0); const ship = Number(shop?.shipping_fee || 0); const total = Math.max(0, sub - (cp?.discount || 0)) + ship;
   const pickAddr = (a) => setF((p) => ({ ...p, name: a.full_name, phone: a.phone, address_line: a.address_line, city: a.city }));
   useEffect(() => { if (user) api.get('/auth/addresses').then((r) => { setAddrs(r.data); const a = r.data.find((x) => x.is_default) || r.data[0]; if (a) pickAddr(a); }); }, [user]);
   const on = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -64,7 +64,7 @@ export default function Checkout() {
         </div>
         <div className="card h-fit space-y-3 p-6 text-sm lg:sticky lg:top-28">
           <h2 className="text-lg font-extrabold">{t('orderSummary')}</h2>
-          <div className="max-h-56 space-y-3 overflow-y-auto">{items.map((i) => <div key={i.id} className="flex items-center gap-3"><img src={img(i.image)} className="h-12 w-12 rounded-xl object-cover" /><div className="min-w-0 flex-1"><p className="truncate font-medium">{pick(i, 'name')}</p><p className="text-xs text-slate-500">{money(unitPrice(i))} × {i.qty}</p></div><b>{money(unitPrice(i) * i.qty)}</b></div>)}</div>
+          <div className="max-h-56 space-y-3 overflow-y-auto">{items.map((i) => <div key={i.id} className="flex items-center gap-3"><img src={img(i.image)} className="h-12 w-12 rounded-xl object-cover" /><div className="min-w-0 flex-1"><p className="truncate font-medium">{pick(i, 'name')}</p><p className="text-xs text-slate-500">{money(unitPrice(i))} × {i.qty}</p></div><b>{money(lineTotal(i))}</b></div>)}</div>
           <hr /><div className="flex gap-2"><input className="input" placeholder={t('coupon')} value={code} onChange={(e) => setCode(e.target.value)} /><button type="button" className="btn-ghost" onClick={apply}>{t('apply')}</button></div>
           <div className="flex justify-between"><span>{t('subtotal')}</span><span>{money(sub)}</span></div>
           {cp && <div className="flex justify-between text-emerald-600"><span>{t('discount')}</span><span>-{money(cp.discount)}</span></div>}

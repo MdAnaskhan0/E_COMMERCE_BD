@@ -147,3 +147,5 @@ npm run dev       # http://localhost:5173
   - Price by quantity (bulk discount): In client side when user select bult discound quantity subtotal calculation become wrong. Example: one product 1 kg product price is 100 tk, and 5 kg bulk discount is 450 tk when user select 5 kg bult discount in subtotal calculate 5*450=2250 tk where is it should be 450 tk, solve the issue.
 
 
+## next work 
+  - Payment status if I update to Paid never select unpaid, Refuned can be selected

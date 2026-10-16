@@ -60,7 +60,7 @@ export default function ProductForm() {
           <div className="flex items-end gap-6 pb-2.5"><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="h-4 w-4 accent-indigo-600" checked={f.is_featured} onChange={on('is_featured')} />Featured</label>
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="h-4 w-4 accent-indigo-600" checked={f.is_active} onChange={on('is_active')} />Active</label></div>
         </div>
-        <div className="mt-6"><p className="label mb-2">Price by quantity (bulk discount)</p><Pairs arr={tiers} set={setTiers} a="min_qty" b="unit_price" la="Min quantity (e.g. 10)" lb="Unit price ৳" num /></div>
+        <div className="mt-6"><p className="label mb-2">Price by quantity (bulk discount)</p><Pairs arr={tiers} set={setTiers} a="min_qty" b="unit_price" la="Quantity (e.g. 5)" lb="TOTAL price for that quantity ৳ (e.g. 450)" num /></div>
       </Section>
       <Section icon={FiList} title="Product features"><Pairs arr={features} set={setFeatures} a="k" b="v" la="Feature name (e.g. Color)" lb="Value (e.g. Black)" /></Section>
       <Section icon={FiImage} title="Product images">

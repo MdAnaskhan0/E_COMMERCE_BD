@@ -23,6 +23,7 @@ const AdminOffers = lazy(() => import('./pages/admin/Offers'));
 const AdminPages = lazy(() => import('./pages/admin/Pages'));
 const Banners = lazy(() => import('./pages/admin/Banners'));
 const Orders = lazy(() => import('./pages/admin/Orders'));
+const Invoice = lazy(() => import('./pages/admin/Invoice'));
 const OrderDetail = lazy(() => import('./pages/admin/OrderDetail'));
 const Reviews = lazy(() => import('./pages/admin/Reviews'));
 const ShopInfo = lazy(() => import('./pages/admin/ShopInfo'));
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="register" element={<Login register />} />
           <Route path="dashboard" element={<Guard><Dashboard /></Guard>} />
         </Route>
+        <Route path="admin/orders/:id/invoice" element={<Guard admin><Invoice /></Guard>} />
         <Route path="admin" element={<Guard admin><AdminLayout /></Guard>}>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<Users />} />

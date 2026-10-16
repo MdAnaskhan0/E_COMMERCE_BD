@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiArrowLeft, FiPhone, FiMapPin, FiMail, FiUser, FiCreditCard, FiCopy, FiCheck, FiLock, FiSave, FiClock, FiAlertTriangle } from 'react-icons/fi';
+import { FiArrowLeft, FiPhone, FiMapPin, FiMail, FiUser, FiCreditCard, FiCopy, FiCheck, FiLock, FiSave, FiClock, FiAlertTriangle, FiPrinter } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api, { fail } from '../../api';
 import Badge from '../../components/Badge';
@@ -22,7 +22,7 @@ export default function OrderDetail() {
   return (
     <div className="space-y-6">
       <Link to="/admin/orders" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-600"><FiArrowLeft />All orders</Link>
-      <div className="flex flex-wrap items-center gap-3"><h2 className="text-2xl font-extrabold">{o.order_no}</h2><Badge s={o.status} /><Badge s={o.payment_status} /><span className="ml-auto flex items-center gap-1.5 text-sm text-slate-500"><FiClock />{new Date(o.created_at).toLocaleString()}</span></div>
+      <div className="flex flex-wrap items-center gap-3"><h2 className="text-2xl font-extrabold">{o.order_no}</h2><Badge s={o.status} /><Badge s={o.payment_status} /><span className="ml-auto flex items-center gap-1.5 text-sm text-slate-500"><FiClock />{new Date(o.created_at).toLocaleString()}</span><Link to={`/admin/orders/${o.id}/invoice`} className="btn-ghost !py-2"><FiPrinter />Print invoice</Link></div>
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <div className="space-y-6">
           <div className="card grid gap-3 p-6 md:grid-cols-2"><h3 className="font-bold md:col-span-2">Customer & delivery</h3>
