@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
 import { pool, q } from '../config/db.js';
-import { ah, validate, HttpError } from '../utils/helpers.js';
+import { ah, validate, HttpError, pageOf, paged, like } from '../utils/helpers.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { upload, uploadsDir } from '../middleware/upload.js';
 import { cleanHtml } from '../utils/sanitize.js';
@@ -42,7 +42,12 @@ crud('/coupons', 'coupons', z.object({ code: z.string().trim().toUpperCase().min
   expires_at: z.string().nullable().optional().or(z.literal('').transform(() => null)), is_active: bool.default(1) }), ['code', 'type', 'value', 'min_order', 'max_uses', 'expires_at', 'is_active']);
 
 // ---------- users ----------
-r.get('/users', ah(async (_req, res) => res.json(await q('SELECT id,name,email,phone,role,is_active,created_at FROM users ORDER BY id DESC'))));
+r.get('/users', ah(async (req, res) => {
+  const pg = pageOf(req); let where = '1=1'; const p = [];
+  if (req.query.q) { where += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)'; const l = like(req.query.q); p.push(l, l, l); }
+  const total = (await q(`SELECT COUNT(*) c FROM users WHERE ${where}`, p))[0].c;
+  res.json(paged(await q(`SELECT id,name,email,phone,role,is_active,created_at FROM users WHERE ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...p, pg.limit, pg.offset]), total, pg));
+}));
 r.put('/users/:id', validate(z.object({ role: z.enum(['customer', 'admin']), is_active: bool })), ah(async (req, res) => {
   if (+req.params.id === req.user.id) throw new HttpError(400, "You can't change your own role/status");
   await q('UPDATE users SET role=?, is_active=? WHERE id=?', [req.body.role, req.body.is_active, req.params.id]); res.json({ ok: true });
@@ -58,7 +63,12 @@ const productSchema = z.object({
   tiers: z.array(z.object({ min_qty: z.number().int().min(2), unit_price: z.number().positive() })).max(10).default([]),
   remove_image_ids: z.array(z.number().int()).default([]),
 });
-r.get('/products', ah(async (_req, res) => res.json(await q(`SELECT p.*,(SELECT url FROM product_images WHERE product_id=p.id ORDER BY sort_order,id LIMIT 1) image FROM products p ORDER BY id DESC`))));
+r.get('/products', ah(async (req, res) => {
+  const pg = pageOf(req); let where = '1=1'; const p = [];
+  if (req.query.q) { where += ' AND (p.name_en LIKE ? OR p.name_bn LIKE ? OR p.sku LIKE ?)'; const l = like(req.query.q); p.push(l, l, l); }
+  const total = (await q(`SELECT COUNT(*) c FROM products p WHERE ${where}`, p))[0].c;
+  res.json(paged(await q(`SELECT p.id,p.name_en,p.name_bn,p.sku,p.price,p.sale_price,p.stock,p.sold_count,p.is_featured,p.is_active,(SELECT url FROM product_images WHERE product_id=p.id ORDER BY sort_order,id LIMIT 1) image FROM products p WHERE ${where} ORDER BY p.id DESC LIMIT ? OFFSET ?`, [...p, pg.limit, pg.offset]), total, pg));
+}));
 r.get('/products/:id', ah(async (req, res) => {
   const [p] = await q('SELECT * FROM products WHERE id=?', [req.params.id]); if (!p) throw new HttpError(404, 'Not found');
   res.json({ ...p, images: await q('SELECT id,url FROM product_images WHERE product_id=?', [p.id]),
@@ -97,19 +107,33 @@ const offerSchema = z.object({ title_en: z.string().trim().max(200).default(''),
   starts_at: dateOrNull, ends_at: dateOrNull, sort_order: z.coerce.number().int().min(0).max(999).default(0), is_active: bool.default(1) })
   .refine((o) => o.title_en || o.title_bn, { message: 'Enter a title (English or Bangla)', path: ['title_en'] })
   .refine((o) => !o.starts_at || !o.ends_at || o.starts_at <= o.ends_at, { message: 'End date must be after start date', path: ['ends_at'] });
+const couponSchema = z.object({ coupon_type: z.enum(['percent', 'fixed']).default('percent'), coupon_value: z.coerce.number().min(0).max(1000000).nullable().optional().or(z.literal('').transform(() => null)),
+  coupon_min_order: z.coerce.number().min(0).default(0), coupon_max_uses: z.coerce.number().int().positive().nullable().optional().or(z.literal('').transform(() => null)) });
+// If the offer has a coupon code: create/update that coupon in the coupons table (so it really works at checkout). With no discount value it must already exist.
+async function syncCoupon(o, raw) {
+  if (!o.coupon_code) return;
+  const c = couponSchema.parse(raw || {});
+  if (c.coupon_value) {
+    if (c.coupon_type === 'percent' && c.coupon_value > 100) throw new HttpError(422, 'Percent discount cannot be more than 100');
+    await q(`INSERT INTO coupons (code,type,value,min_order,max_uses,expires_at,is_active) VALUES (?,?,?,?,?,?,1)
+      ON DUPLICATE KEY UPDATE type=VALUES(type), value=VALUES(value), min_order=VALUES(min_order), max_uses=VALUES(max_uses), expires_at=VALUES(expires_at), is_active=1`,
+      [o.coupon_code, c.coupon_type, c.coupon_value, c.coupon_min_order, c.coupon_max_uses ?? null, o.ends_at]);
+  } else if (!(await q('SELECT 1 FROM coupons WHERE code=?', [o.coupon_code])).length)
+    throw new HttpError(422, `Coupon ${o.coupon_code} does not exist yet. Enter a discount type and value so it can be created.`);
+}
 const OF = ['title_en', 'title_bn', 'summary_en', 'summary_bn', 'description_en', 'description_bn', 'badge', 'coupon_code', 'link', 'starts_at', 'ends_at', 'sort_order', 'is_active'];
-r.get('/offers', ah(async (_req, res) => res.json(await q('SELECT * FROM offers ORDER BY sort_order, id DESC'))));
+r.get('/offers', ah(async (_req, res) => res.json(await q('SELECT o.*, c.type coupon_type, c.value coupon_value, c.min_order coupon_min_order, c.max_uses coupon_max_uses FROM offers o LEFT JOIN coupons c ON c.code=o.coupon_code ORDER BY o.sort_order, o.id DESC'))));
 r.post('/offers', upload.single('image'), ah(async (req, res) => {
   try {
     if (!req.file) throw new HttpError(400, 'Offer image is required');
-    const o = offerSchema.parse(JSON.parse(req.body.data || '{}'));
+    const raw = JSON.parse(req.body.data || '{}'); const o = offerSchema.parse(raw); await syncCoupon(o, raw);
     const { insertId } = await q(`INSERT INTO offers (image,${OF.join(',')}) VALUES (?,${OF.map(() => '?').join(',')})`, [`/uploads/${req.file.filename}`, ...OF.map((k) => o[k])]);
     res.status(201).json({ id: insertId });
   } catch (e) { if (req.file) fs.unlink(req.file.path).catch(() => {}); throw e; }
 }));
 r.put('/offers/:id', upload.single('image'), ah(async (req, res) => {
   try {
-    const o = offerSchema.parse(JSON.parse(req.body.data || '{}'));
+    const raw = JSON.parse(req.body.data || '{}'); const o = offerSchema.parse(raw); await syncCoupon(o, raw);
     const [old] = await q('SELECT image FROM offers WHERE id=?', [req.params.id]); if (!old) throw new HttpError(404, 'Not found');
     await q(`UPDATE offers SET image=?,${OF.map((k) => `${k}=?`).join(',')} WHERE id=?`, [req.file ? `/uploads/${req.file.filename}` : old.image, ...OF.map((k) => o[k]), req.params.id]);
     if (req.file) fs.unlink(path.join(uploadsDir, path.basename(old.image))).catch(() => {});
@@ -163,10 +187,12 @@ r.delete('/banners/:id', ah(async (req, res) => {
 // ---------- orders ----------
 const FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 r.get('/orders', ah(async (req, res) => {
-  const rows = await q(`SELECT id,order_no,customer_name,customer_phone,total,status,payment_method,payment_status,created_at,(SELECT COUNT(*) FROM order_items WHERE order_id=orders.id) items FROM orders ${req.query.status ? 'WHERE status=?' : ''} ORDER BY id DESC LIMIT 500`, req.query.status ? [req.query.status] : []);
-  res.json(rows);
-}));
-r.get('/orders/:id', ah(async (req, res) => {
+  const pg = pageOf(req); let where = '1=1'; const p = [];
+  if (req.query.status) { where += ' AND status=?'; p.push(String(req.query.status)); }
+  if (req.query.q) { where += ' AND (order_no LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)'; const l = like(req.query.q); p.push(l, l, l); }
+  const total = (await q(`SELECT COUNT(*) c FROM orders WHERE ${where}`, p))[0].c;
+  res.json(paged(await q(`SELECT id,order_no,customer_name,customer_phone,total,status,payment_method,payment_status,created_at,(SELECT COUNT(*) FROM order_items WHERE order_id=orders.id) items FROM orders WHERE ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...p, pg.limit, pg.offset]), total, pg));
+}));r.get('/orders/:id', ah(async (req, res) => {
   const [o] = await q('SELECT * FROM orders WHERE id=?', [req.params.id]); if (!o) throw new HttpError(404, 'Order not found');
   res.json({ ...o, items: await q('SELECT product_name,unit_price,quantity,line_total FROM order_items WHERE order_id=?', [o.id]), history: await q('SELECT status,created_at FROM order_status_history WHERE order_id=? ORDER BY id', [o.id]) });
 }));
@@ -188,7 +214,12 @@ r.put('/orders/:id', validate(z.object({ status: z.enum(['pending', 'confirmed',
   }));
 
 // ---------- reviews ----------
-r.get('/reviews', ah(async (_req, res) => res.json(await q('SELECT r.*,u.name user_name,p.name_en product FROM reviews r JOIN users u ON u.id=r.user_id JOIN products p ON p.id=r.product_id ORDER BY r.id DESC'))));
+r.get('/reviews', ah(async (req, res) => {
+  const pg = pageOf(req); let where = '1=1'; const p = [];
+  if (req.query.q) { where += ' AND (p.name_en LIKE ? OR u.name LIKE ? OR r.comment LIKE ?)'; const l = like(req.query.q); p.push(l, l, l); }
+  const total = (await q(`SELECT COUNT(*) c FROM reviews r JOIN users u ON u.id=r.user_id JOIN products p ON p.id=r.product_id WHERE ${where}`, p))[0].c;
+  res.json(paged(await q(`SELECT r.*,u.name user_name,p.name_en product FROM reviews r JOIN users u ON u.id=r.user_id JOIN products p ON p.id=r.product_id WHERE ${where} ORDER BY r.id DESC LIMIT ? OFFSET ?`, [...p, pg.limit, pg.offset]), total, pg));
+}));
 r.put('/reviews/:id', validate(z.object({ is_approved: bool })), ah(async (req, res) => { await q('UPDATE reviews SET is_approved=? WHERE id=?', [req.body.is_approved, req.params.id]); res.json({ ok: true }); }));
 r.delete('/reviews/:id', ah(async (req, res) => { await q('DELETE FROM reviews WHERE id=?', [req.params.id]); res.json({ ok: true }); }));
 

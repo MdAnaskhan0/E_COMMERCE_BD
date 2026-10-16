@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiGrid, FiChevronRight, FiX, FiSliders, FiCheck, FiSearch } from 'react-icons/fi';
@@ -7,11 +7,14 @@ import { useT } from '../i18n';
 import ProductCard from '../components/ProductCard';
 
 export default function Shop() {
-  const { t, pick, money } = useT(); const [sp, setSp] = useSearchParams(); const [cats, setCats] = useState([]); const [data, setData] = useState(null); const [show, setShow] = useState(false);
+  const { t, pick, money } = useT(); const [sp, setSp] = useSearchParams(); const [cats, setCats] = useState([]); const [data, setData] = useState(null); const [more, setMore] = useState(false); const seq = useRef(0); const [show, setShow] = useState(false);
   const [price, setPrice] = useState({ min: sp.get('min') || '', max: sp.get('max') || '' });
   const set = (obj) => { const n = new URLSearchParams(sp); Object.entries(obj).forEach(([k, v]) => (v ? n.set(k, v) : n.delete(k))); if (!('page' in obj)) n.delete('page'); setSp(n); };
   useEffect(() => { api.get('/categories').then((r) => setCats(r.data)); }, []);
-  useEffect(() => { setData(null); api.get(`/products?${sp.toString()}&limit=12`).then((r) => setData(r.data)); setPrice({ min: sp.get('min') || '', max: sp.get('max') || '' }); }, [sp]);
+  const filterKey = (() => { const n = new URLSearchParams(sp); n.delete('page'); return n.toString(); })();
+  const fetchPage = (page) => api.get(`/products?${filterKey}&page=${page}&limit=12`).then((r) => r.data);
+  useEffect(() => { const my = ++seq.current; setData(null); setMore(false); fetchPage(1).then((d) => { if (my === seq.current) setData(d); }).catch(() => { if (my === seq.current) setData({ items: [], total: 0, page: 1, pages: 1, hasMore: false }); }); setPrice({ min: sp.get('min') || '', max: sp.get('max') || '' }); }, [filterKey]); // eslint-disable-line
+  const loadMore = () => { if (more || !data?.hasMore) return; const my = seq.current; setMore(true); fetchPage(data.page + 1).then((d) => { if (my === seq.current) setData((o) => ({ ...d, items: [...o.items, ...d.items.filter((x) => !o.items.some((y) => y.id === x.id))] })); }).finally(() => { if (my === seq.current) setMore(false); }); };
   const cat = cats.find((c) => String(c.id) === sp.get('category')); const sub = cat?.subs.find((s) => String(s.id) === sp.get('sub'));
   const chips = [sp.get('q') && ['q', `“${sp.get('q')}”`], cat && ['category', pick(cat, 'name')], sub && ['sub', pick(sub, 'name')], (sp.get('min') || sp.get('max')) && ['price', `${money(sp.get('min') || 0)} – ${sp.get('max') ? money(sp.get('max')) : '∞'}`], sp.get('instock') && ['instock', t('inStockOnly')]].filter(Boolean);
   const clear = (k) => (k === 'price' ? set({ min: '', max: '' }) : k === 'category' ? set({ category: '', sub: '' }) : set({ [k]: '' }));
@@ -46,7 +49,9 @@ export default function Shop() {
           {!data ? <div className="grid grid-cols-2 gap-5 xl:grid-cols-3">{Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton aspect-[3/4]" />)}</div>
             : data.items.length === 0 ? <div className="card py-24 text-center"><FiSearch className="mx-auto mb-3 text-5xl text-slate-300" /><p className="mb-4 text-slate-500">{t('noResult')}</p><button className="btn-primary" onClick={() => setSp({})}>{t('tryAgain')}</button></div>
             : (<><div className="grid grid-cols-2 gap-4 md:gap-5 xl:grid-cols-3">{data.items.map((p) => <ProductCard key={p.id} p={p} />)}</div>
-              {data.pages > 1 && <div className="mt-10 flex justify-center gap-1.5">{Array.from({ length: data.pages }, (_, i) => <button key={i} onClick={() => set({ page: i + 1 })} className={`h-10 w-10 rounded-xl text-sm font-semibold transition ${data.page === i + 1 ? 'bg-gradient-to-br from-brand-600 to-violet-600 text-white shadow-lg shadow-brand-600/30' : 'border bg-white hover:border-brand-500'}`}>{i + 1}</button>)}</div>}</>)}
+              <div className="mt-10 text-center"><p className="mb-3 text-sm text-slate-500">{t('showing')} <b>{data.items.length}</b> / <b>{data.total}</b></p>
+                <div className="mx-auto mb-4 h-1.5 w-56 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-gradient-to-r from-brand-600 to-violet-600 transition-all" style={{ width: `${Math.min(100, (data.items.length / data.total) * 100)}%` }} /></div>
+                {data.hasMore && <button className="btn-primary" disabled={more} onClick={loadMore}>{more ? '…' : t('loadMore')}</button>}</div></>)}
         </div>
       </div>
       <AnimatePresence>{show && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/50" onClick={() => setShow(false)} />

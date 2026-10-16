@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiSearch, FiChevronRight } from 'react-icons/fi';
-import api, { fail } from '../../api';
 import Badge from '../../components/Badge';
+import Pager from '../../components/Pager';
+import usePaged from '../../usePaged';
 
 const ST = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 export default function Orders() {
-  const nav = useNavigate(); const [rows, setRows] = useState([]); const [flt, setFlt] = useState(''); const [s, setS] = useState('');
-  useEffect(() => { api.get(`/admin/orders${flt ? `?status=${flt}` : ''}`).then((r) => setRows(r.data)).catch(fail); }, [flt]);
-  const list = rows.filter((o) => (o.order_no + o.customer_name + o.customer_phone).toLowerCase().includes(s.toLowerCase()));
+  const nav = useNavigate(); const [flt, setFlt] = useState(''); const [s, setS] = useState(''); const pg = usePaged('/admin/orders', { q: s, status: flt, limit: 15 }); const list = pg.items;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -22,7 +21,8 @@ export default function Orders() {
             <td className="font-bold text-brand-600">{o.order_no}</td><td><b>{o.customer_name}</b><br /><span className="text-xs text-slate-500">{o.customer_phone}</span></td><td>{o.items}</td><td className="font-bold">৳{o.total}</td>
             <td><span className="mr-1 text-xs font-semibold uppercase">{o.payment_method}</span><Badge s={o.payment_status} /></td><td><Badge s={o.status} /></td>
             <td className="text-xs text-slate-500">{new Date(o.created_at).toLocaleString()}</td><td className="text-slate-400"><FiChevronRight /></td></tr>))}</tbody></table></div>
-        {list.length === 0 && <p className="p-12 text-center text-sm text-slate-400">No orders</p>}</div>
+        {!pg.loading && list.length === 0 && <p className="p-12 text-center text-sm text-slate-400">No orders</p>}
+        <Pager page={pg.page} pages={pg.pages} total={pg.total} limit={pg.limit} onPage={pg.setPage} /></div>
     </div>
   );
 }

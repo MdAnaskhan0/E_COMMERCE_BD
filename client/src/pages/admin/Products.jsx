@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiPlus, FiSearch, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api, { img, fail } from '../../api';
 import Badge from '../../components/Badge';
+import Pager from '../../components/Pager';
+import usePaged from '../../usePaged';
 
 export default function Products() {
-  const [rows, setRows] = useState([]); const [s, setS] = useState('');
-  const load = () => api.get('/admin/products').then((r) => setRows(r.data));
-  useEffect(() => { load(); }, []);
+  const [s, setS] = useState(''); const pg = usePaged('/admin/products', { q: s, limit: 15 }); const load = pg.reload;
   const del = async (id) => { if (confirm('Delete this product?')) { try { await api.delete(`/admin/products/${id}`); toast.success('Deleted'); load(); } catch (e) { fail(e); } } };
-  const list = rows.filter((p) => (p.name_en + p.name_bn + (p.sku || '')).toLowerCase().includes(s.toLowerCase()));
+  const list = pg.items;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -23,7 +23,8 @@ export default function Products() {
           <td>{p.stock <= 5 ? <Badge s="cancelled">{p.stock}</Badge> : p.stock}</td><td>{p.sold_count}</td>
           <td className="space-x-1"><Badge s={p.is_active ? 'on' : 'off'}>{p.is_active ? 'Active' : 'Hidden'}</Badge>{p.is_featured ? <Badge s="pending">★ Featured</Badge> : null}</td>
           <td className="space-x-1 text-right"><Link className="inline-flex rounded-lg p-2 text-brand-600 hover:bg-brand-50" to={`/admin/products/${p.id}`}><FiEdit2 /></Link><button className="rounded-lg p-2 text-red-500 hover:bg-red-50" onClick={() => del(p.id)}><FiTrash2 /></button></td></tr>)}</tbody></table></div>
-        {list.length === 0 && <p className="p-10 text-center text-sm text-slate-400">No products</p>}</div>
+        {!pg.loading && list.length === 0 && <p className="p-10 text-center text-sm text-slate-400">No products</p>}
+        <Pager page={pg.page} pages={pg.pages} total={pg.total} limit={pg.limit} onPage={pg.setPage} /></div>
     </div>
   );
 }

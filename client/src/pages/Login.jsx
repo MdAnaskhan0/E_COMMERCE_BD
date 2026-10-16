@@ -8,6 +8,10 @@ import api, { fail } from '../api';
 import { setUser } from '../store';
 import { useT } from '../i18n';
 
+// Defined OUTSIDE Login: a component created inside another component is re-created on every keystroke,
+// which makes inputs lose focus after one character.
+const Ic = ({ I, children }) => <div className="relative"><I className="absolute left-3.5 top-3.5 text-slate-400" />{children}</div>;
+
 export default function Login({ register }) {
   const { t } = useT(); const d = useDispatch(); const nav = useNavigate(); const shop = useSelector((s) => s.ui.shop);
   const [f, setF] = useState({ name: '', email: '', phone: '', password: '' }); const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
@@ -17,7 +21,6 @@ export default function Login({ register }) {
     try { const { data } = await api.post(register ? '/auth/register' : '/auth/login', register ? f : { email: f.email, password: f.password }); d(setUser(data.user)); toast.success(`${t('hello')} ${data.user.name}`); nav(data.user.role === 'admin' ? '/admin' : '/dashboard'); }
     catch (er) { fail(er); } finally { setBusy(false); }
   };
-  const Ic = ({ I, children }) => <div className="relative"><I className="absolute left-3.5 top-3.5 text-slate-400" />{children}</div>;
   return (
     <div className="mx-auto grid max-w-5xl overflow-hidden px-4 py-10 md:grid-cols-2">
       <div className="relative hidden flex-col justify-between overflow-hidden rounded-l-3xl bg-gradient-to-br from-brand-700 via-violet-700 to-fuchsia-600 p-10 text-white md:flex">

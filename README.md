@@ -140,3 +140,10 @@ npm run dev       # http://localhost:5173
 ## next work:
   - Product Page show pagination or load more button so that server don't send all product data it will be crush server when user is more.
   - Coupon is not save in database.
+  - sign in, sign up page input field can;t take more than 1 characther fixed the issue.
+
+## next work 
+  - Order Invoice Print 
+  - Price by quantity (bulk discount): In client side when user select bult discound quantity subtotal calculation become wrong. Example: one product 1 kg product price is 100 tk, and 5 kg bulk discount is 450 tk when user select 5 kg bult discount in subtotal calculate 5*450=2250 tk where is it should be 450 tk, solve the issue.
+
+
