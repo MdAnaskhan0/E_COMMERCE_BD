@@ -14,11 +14,40 @@ r.use(requireAdmin);
 const bool = z.union([z.boolean(), z.number()]).transform((v) => (v ? 1 : 0));
 
 // ---------- dashboard ----------
-r.get('/stats', ah(async (_req, res) => {
+const RANGES = {
+  day: { n: 30, unit: 'DAY', fmt: '%Y-%m-%d', since: 'DATE_SUB(CURDATE(), INTERVAL 29 DAY)' },
+  month: { n: 12, unit: 'MONTH', fmt: '%Y-%m', since: "DATE_SUB(DATE_FORMAT(CURDATE(),'%Y-%m-01'), INTERVAL 11 MONTH)" },
+  year: { n: 5, unit: 'YEAR', fmt: '%Y', since: "DATE_SUB(DATE_FORMAT(CURDATE(),'%Y-01-01'), INTERVAL 4 YEAR)" } };
+// Walk back n buckets from today so empty days/months/years show as 0 instead of being skipped
+function buckets(range) {
+  const out = [], now = new Date(), { n } = RANGES[range];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), range === 'year' ? now.getMonth() : range === 'month' ? now.getMonth() - i : now.getMonth(), range === 'day' ? now.getDate() - i : 1);
+    if (range === 'year') d.setFullYear(now.getFullYear() - i);
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+    out.push(range === 'day' ? `${y}-${m}-${dd}` : range === 'month' ? `${y}-${m}` : `${y}`);
+  }
+  return out;
+}
+r.get('/stats', ah(async (req, res) => {
+  const range = RANGES[req.query.range] ? req.query.range : 'day', R = RANGES[range];
   const [[a]] = await pool.query(`SELECT (SELECT COUNT(*) FROM orders) orders,(SELECT COALESCE(SUM(total),0) FROM orders WHERE status<>'cancelled') revenue,
-    (SELECT COUNT(*) FROM users WHERE role='customer') customers,(SELECT COUNT(*) FROM products) products,(SELECT COUNT(*) FROM orders WHERE status='pending') pending`);
-  res.json({ ...a, sales: await q(`SELECT DATE_FORMAT(created_at,'%d %b') d, SUM(total) t FROM orders WHERE created_at >= CURDATE() - INTERVAL 6 DAY AND status<>'cancelled' GROUP BY DATE(created_at), d ORDER BY DATE(created_at)`), recent: await q('SELECT order_no,customer_name,total,status,created_at FROM orders ORDER BY id DESC LIMIT 6'),
-    lowStock: await q('SELECT id,name_en,stock FROM products WHERE stock<=5 ORDER BY stock LIMIT 6') });
+    (SELECT COUNT(*) FROM users WHERE role='customer') customers,(SELECT COUNT(*) FROM products) products,(SELECT COUNT(*) FROM orders WHERE status='pending') pending,
+    (SELECT COALESCE(SUM(total),0) FROM orders WHERE status<>'cancelled' AND DATE(created_at)=CURDATE()) today_revenue,(SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE()) today_orders,
+    (SELECT COALESCE(SUM(total),0) FROM orders WHERE status<>'cancelled' AND DATE_FORMAT(created_at,'%Y-%m')=DATE_FORMAT(CURDATE(),'%Y-%m')) month_revenue,
+    (SELECT COALESCE(SUM(total),0) FROM orders WHERE payment_status='paid') paid_total,(SELECT COALESCE(SUM(total),0) FROM orders WHERE payment_status='unpaid' AND status<>'cancelled') unpaid_total`);
+  const rows = await q(`SELECT DATE_FORMAT(created_at,'${R.fmt}') k, COALESCE(SUM(total),0) t, COUNT(*) c FROM orders WHERE status<>'cancelled' AND created_at >= ${R.since} GROUP BY k`);
+  const map = new Map(rows.map((x) => [x.k, x]));
+  const sales = buckets(range).map((k) => ({ k, t: Number(map.get(k)?.t || 0), c: Number(map.get(k)?.c || 0) }));
+  const [statusRows, payRows, topSold, byCat, recent, lowStock] = await Promise.all([
+    q('SELECT status k, COUNT(*) c FROM orders GROUP BY status'),
+    q("SELECT payment_method k, COUNT(*) c, COALESCE(SUM(total),0) t FROM orders WHERE status<>'cancelled' GROUP BY payment_method"),
+    q(`SELECT i.product_id id, MAX(i.product_name) name, SUM(i.quantity) qty, SUM(i.line_total) revenue FROM order_items i JOIN orders o ON o.id=i.order_id WHERE o.status<>'cancelled' AND o.created_at >= ${R.since} GROUP BY i.product_id ORDER BY qty DESC LIMIT 8`),
+    q(`SELECT c.name_en name, COUNT(p.id) products, COALESCE(SUM(p.stock),0) stock FROM categories c LEFT JOIN products p ON p.category_id=c.id GROUP BY c.id ORDER BY products DESC LIMIT 8`),
+    q('SELECT order_no,customer_name,total,status,created_at FROM orders ORDER BY id DESC LIMIT 6'),
+    q('SELECT id,name_en,stock FROM products WHERE stock<=5 ORDER BY stock LIMIT 6'),
+  ]);
+  res.json({ ...a, range, sales, status: statusRows, payments: payRows, topSold, byCat, recent, lowStock });
 }));
 
 // ---------- generic CRUD for simple tables ----------
@@ -198,12 +227,17 @@ r.get('/orders', ah(async (req, res) => {
 }));
 r.put('/orders/:id', validate(z.object({ status: z.enum(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled']), payment_status: z.enum(['unpaid', 'paid', 'refunded']) })),
   ah(async (req, res) => {
-    const [o] = await q('SELECT status FROM orders WHERE id=?', [req.params.id]); if (!o) throw new HttpError(404, 'Not found');
+    const [o] = await q('SELECT status, payment_status FROM orders WHERE id=?', [req.params.id]); if (!o) throw new HttpError(404, 'Not found');
     const cur = o.status, next = req.body.status;
     if (next !== cur) { // status can only move FORWARD
       if (cur === 'delivered' || cur === 'cancelled') throw new HttpError(400, `Order is already ${cur} and cannot be changed`);
       if (next === 'cancelled') { if (cur === 'shipped') throw new HttpError(400, 'A shipped order cannot be cancelled'); }
       else if (FLOW.indexOf(next) < FLOW.indexOf(cur)) throw new HttpError(400, 'Order status cannot go backward');
+    }
+    if (req.body.payment_status !== o.payment_status) { // paid can never go back to unpaid (only refunded); refunded is final; refund only after paid
+      if (o.payment_status === 'refunded') throw new HttpError(400, 'A refunded payment cannot be changed');
+      if (o.payment_status === 'paid' && req.body.payment_status === 'unpaid') throw new HttpError(400, 'A paid order cannot be set back to unpaid. Use Refunded instead.');
+      if (o.payment_status === 'unpaid' && req.body.payment_status === 'refunded') throw new HttpError(400, 'Only a paid order can be refunded');
     }
     await q('UPDATE orders SET status=?, payment_status=? WHERE id=?', [next, req.body.payment_status, req.params.id]);
     if (next !== cur) {

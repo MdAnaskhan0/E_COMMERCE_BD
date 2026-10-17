@@ -16,6 +16,8 @@ export default function OrderDetail() {
   const cur = FLOW.indexOf(o.status); const final = o.status === 'delivered' || o.status === 'cancelled';
   // status can only go forward; cancel only before shipping
   const allowed = (s) => !final && (s === 'cancelled' ? o.status !== 'shipped' : FLOW.indexOf(s) >= cur);
+  // payment can only move forward: unpaid → paid → refunded (paid can never go back to unpaid)
+  const payAllowed = (p) => p === o.payment_status || (o.payment_status === 'unpaid' && p === 'paid') || (o.payment_status === 'paid' && p === 'refunded');
   const dirty = status !== o.status || pay !== o.payment_status; const mobile = o.payment_method !== 'cod';
   const save = async () => { setBusy(true); try { await api.put(`/admin/orders/${id}`, { status, payment_status: pay }); toast.success('Order updated'); load(); } catch (e) { fail(e); } finally { setBusy(false); } };
   const Info = ({ I, children }) => <p className="flex items-start gap-2.5 text-sm"><I className="mt-0.5 shrink-0 text-slate-400" />{children}</p>;
@@ -43,7 +45,7 @@ export default function OrderDetail() {
               <div className="mt-1 flex items-center justify-between"><span className="font-mono text-xl font-bold tracking-widest">{o.payment_trx_id}</span><button onClick={() => { navigator.clipboard?.writeText(o.payment_trx_id); toast.success('Copied'); }} className="rounded-lg bg-white/10 p-2 hover:bg-white/20"><FiCopy /></button></div>
               <p className="mt-2 flex gap-1.5 text-[11px] text-slate-400"><FiAlertTriangle className="mt-0.5 shrink-0 text-amber-400" />Verify this ID & amount in your {o.payment_method} account, then mark as Paid.</p></div>}
             <label className="label mb-1 mt-4 block">Payment status</label>
-            <div className="grid grid-cols-3 gap-2">{['unpaid', 'paid', 'refunded'].map((p) => <button key={p} onClick={() => setPay(p)} className={`rounded-xl border-2 py-2 text-xs font-bold capitalize transition ${pay === p ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>{p}</button>)}</div></div>
+            <div className="grid grid-cols-3 gap-2">{['unpaid', 'paid', 'refunded'].map((p) => <button key={p} disabled={!payAllowed(p)} onClick={() => setPay(p)} className={`rounded-xl border-2 py-2 text-xs font-bold capitalize transition disabled:cursor-not-allowed disabled:opacity-40 ${pay === p ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>{p}</button>)}</div></div>
           <div className="card p-6"><h3 className="mb-3 font-bold">Order status</h3>
             {final && <p className="mb-3 flex items-center gap-2 rounded-xl bg-slate-100 p-3 text-xs text-slate-600"><FiLock />This order is {o.status} and can no longer change status.</p>}
             <div className="space-y-2">{[...FLOW, 'cancelled'].map((s) => { const ok = allowed(s) || s === o.status; return (

@@ -87,12 +87,6 @@ npm run dev       # http://localhost:5173
 - Blocked (CSRF) / 401 on API → use the Vite dev URL (5173) so the proxy works.
 
 
-
-
-
-
-
-
 ## Problem have to solved
   - logo image size need more bigger, If have image the Site Name should not be shown
   - Product Page Side bar need to be UI change 
@@ -149,3 +143,4 @@ npm run dev       # http://localhost:5173
 
 ## next work 
   - Payment status if I update to Paid never select unpaid, Refuned can be selected
+  - Admin dashboard UI need more informative, Sales can be filterd by days/months/year. use barchart, Product chart, product sale chart. means dashboard UI need more informative.
